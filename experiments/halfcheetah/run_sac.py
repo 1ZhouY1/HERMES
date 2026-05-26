@@ -14,7 +14,7 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent
+from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent
 import torch.nn.functional as F
 
 
@@ -269,6 +269,32 @@ if __name__ == '__main__':
             map_location=device,
         ).to(device)
     # Ignore the ProgNet and PackNet methods
+
+    elif args.model_type == "packnet":
+        packnet_retrain_start = args.total_timesteps - int(args.total_timesteps * 0.2)
+        if len(args.prev_units) == 0:
+            model = PackNetAgent(
+                obs_dim=obs_dim,
+                act_dim=act_dim,
+                task_id=args.task_id,
+                total_task_num=20,
+                device=device,
+            ).to(device)
+        else:
+            model = PackNetAgent.load(
+                args.prev_units[0],
+                task_id=args.task_id + 1,
+                restart_heads=True,
+                freeze_bias=True,
+                map_location=device,
+            ).to(device)
+    elif args.model_type == "prognet":
+        model = ProgressiveNetAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            prev_paths=args.prev_units,
+            map_location=device,
+        ).to(device)
 
     actor = Actor(envs, model).to(device)
     qf1 = SoftQNetwork(envs).to(device)
