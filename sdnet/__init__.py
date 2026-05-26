@@ -1,0 +1,1 @@
+from .snet_impl import SingleNet
