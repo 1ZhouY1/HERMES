@@ -333,7 +333,7 @@ if __name__ == '__main__':
                 [envs.single_action_space.sample() for _ in range(envs.num_envs)]
             )
         else:
-            if args.model_type == 'sdnet' and global_step % 1000 == 0:
+            if args.model_type in ['sdnet', 'componet'] and global_step % 1000 == 0:
                 actions, _, _ = actor.get_action(
                     torch.Tensor(obs).to(device),
                     writer=writer,
@@ -414,11 +414,11 @@ if __name__ == '__main__':
                     actor_optimizer.zero_grad()
                     actor_loss.backward()
 
-                    # if args.model_type == 'packnet':
-                    #     if global_step >= packnet_retain_start:
-                    #         # can be called multiple times, only the first counts
-                    #         actor.model.start_retaining()
-                    #     actor.model.before_update()
+                    if args.model_type == 'packnet':
+                        if global_step >= packnet_retrain_start:
+                            # can be called multiple times, only the first counts
+                            actor.model.start_retaining()
+                        actor.model.before_update()
                     actor_optimizer.step()
 
                     if args.autotune:
