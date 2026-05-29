@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from models.shared_arch import shared
 import numpy as np
 from tasks import get_task
 import gymnasium as gym
@@ -235,7 +234,7 @@ if __name__ == '__main__':
     #select the model to use as the agent
     obs_dim = np.array(envs.single_observation_space.shape).prod()
     act_dim = np.prod(envs.single_action_space.shape)
-    print(f'*** Loading model `{args.model_type}`')
+    print(f'*** Loading model `{args.model_type}` ***')
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
@@ -281,9 +280,6 @@ if __name__ == '__main__':
 
     # Automatic entropy tuning
     if args.autotune:
-        """
-        torch.Tensor: create a action_space shaped tensor with some random numbers
-        """
         target_entropy = -torch.prod(
             torch.Tensor(envs.action_space.shape).to(device)
         ).item() 
@@ -432,7 +428,10 @@ if __name__ == '__main__':
                     'losses/qf2_loss', qf2_loss.item(), global_step
                 )
                 writer.add_scalar(
-                    'losses/actor_loss', actor_loss.item() / 2.0, global_step
+                    "losses/qf_loss", qf_loss.item() / 2.0, global_step
+                )
+                writer.add_scalar(
+                    'losses/actor_loss', actor_loss.item(), global_step
                 )
                 writer.add_scalar(
                     'losses/alpha', alpha, global_step
@@ -443,6 +442,10 @@ if __name__ == '__main__':
                     int(global_step / (time.time() - start_time)),
                     global_step,
                 )
+                if args.autotune:
+                    writer.add_scalar(
+                        "losses/alpha_loss", alpha_loss.item(), global_step
+                    )
 
     [
         eval_agent(actor, envs.envs[i], args.num_evals, global_step, writer, device)

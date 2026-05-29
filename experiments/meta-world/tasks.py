@@ -26,6 +26,10 @@ def get_task(task_id, render=False):
     env_cls = ALL_V2_ENVIRONMENTS_GOAL_OBSERVABLE[name]
     env = env_cls(seed=np.random.randint(0, 1024))
 
+    if render:
+        env.render_mode = "human"
+    env._freeze_rand_vec = False
+
     return env
 
 if __name__ == '__main__':

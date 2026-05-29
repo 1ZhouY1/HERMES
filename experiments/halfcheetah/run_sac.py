@@ -14,13 +14,13 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent
+from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent, CompoNetAgent
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet'] 
+    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'componet'] 
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
@@ -256,7 +256,13 @@ if __name__ == '__main__':
     
     if args.model_type == 'simple':
         model = SimpleAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
-    
+    elif args.model_type == "componet":
+        model = CompoNetAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            prev_paths=args.prev_units,
+            map_location=device,
+        ).to(device)
     elif args.model_type == 'finetune':
         model = SimpleAgent.load(
             args.prev_units[0], map_location=device, reset_heads=True
