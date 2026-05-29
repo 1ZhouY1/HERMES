@@ -14,13 +14,13 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent, CompoNetAgent
+from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'componet'] 
+    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'sdnet-rapid'] 
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
@@ -256,18 +256,12 @@ if __name__ == '__main__':
     
     if args.model_type == 'simple':
         model = SimpleAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
-    elif args.model_type == "componet":
-        model = CompoNetAgent(
-            obs_dim=obs_dim,
-            act_dim=act_dim,
-            prev_paths=args.prev_units,
-            map_location=device,
-        ).to(device)
+    
     elif args.model_type == 'finetune':
         model = SimpleAgent.load(
             args.prev_units[0], map_location=device, reset_heads=True
         ).to(device)
-    elif args.model_type == 'sdnet':
+    elif args.model_type in ['sdnet', 'sdnet-rapid']:
         model = SingleNetAgent(
             obs_dim=obs_dim,
             act_dim=act_dim,
@@ -339,7 +333,7 @@ if __name__ == '__main__':
                 [envs.single_action_space.sample() for _ in range(envs.num_envs)]
             )
         else:
-            if args.model_type in ['sdnet', 'componet'] and global_step % 1000 == 0:
+            if args.model_type in ['sdnet', 'componet', 'sdnet-rapid'] and global_step % 1000 == 0:
                 actions, _, _ = actor.get_action(
                     torch.Tensor(obs).to(device),
                     writer=writer,
@@ -423,7 +417,7 @@ if __name__ == '__main__':
                     if args.model_type == 'packnet':
                         if global_step >= packnet_retrain_start:
                             # can be called multiple times, only the first counts
-                            actor.model.start_retaining()
+                            actor.model.start_retraining()
                         actor.model.before_update()
                     actor_optimizer.step()
 
