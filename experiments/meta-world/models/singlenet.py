@@ -34,7 +34,8 @@ class SingleNetAgent(nn.Module):
             hidden_dim=256,
             output_dim=act_dim,
             buffer=buffer,
-            internal_policy=net(obs_dim + 256, act_dim),
+            # internal_policy=net(obs_dim + 256, act_dim),
+            internal_policy=net(obs_dim, act_dim),
         )
     
     def forward(self, x, writer=None, global_step=None):
@@ -42,7 +43,8 @@ class SingleNetAgent(nn.Module):
             mean = self.net_mean(x)[0]
         else:
             mean, att_out, policy_out, lin_val = self.net_mean(x, ret_att_out=True, ret_int_pol=True, ret_lin_val=True)
-            for i, v in enumerate(att_out.mean(0)[0].detach()):
+            # for i, v in enumerate(att_out.mean(0)[0].detach()):
+            for i, v in enumerate(att_out.mean(0).detach()):
                 writer.add_scalar(f'charts/att_out_{i}', v.item(), global_step)
             with torch.no_grad():
                 dist_out_int_pol = (mean - policy_out).abs().mean().item()

@@ -18,6 +18,9 @@ def parse_args():
             "prognet",
             "packnet",
             "sdnet",
+            "sdnet-rapid",
+            "grunet",
+            "only-sdnet",
         ],
         required=True,
     )
@@ -30,10 +33,10 @@ def parse_args():
 
 args = parse_args()
 
-modes = list(range(20)) if args.algorithm != "simple" or "sdnet" else list(range(10))
+modes = list(range(20)) if args.algorithm != "simple" or "sdnet" or "sdnet-rapid" or "grunet" or "only-sdnet" else list(range(10))
 
 # NOTE: If the algoritm is not `simple`, it always should start from the second task
-if args.algorithm not in ["simple", "packnet", "prognet", "sdnet"] and args.start_mode == 0:
+if args.algorithm not in ["simple", "packnet", "prognet", "sdnet", "sdnet-rapid", "grunet", "only-sdnet"] and args.start_mode == 0:
     start_mode = 1
 else:
     start_mode = args.start_mode
