@@ -91,6 +91,43 @@ class SingleNet(nn.Module):
         samples = self.buffer.sample(k_samples)
         return samples
     
+    def retrieve(self, s, phi_s, phi_a):
+        """
+        Returns the most similar state-action pairs and the linear composition of actions.
+
+        s     -- the current state if the encoder is None else the encoded state.
+        phi_s -- the retrieved state samples matrix of the experiences from the replay buffer.
+        phi_a -- the retrieved action samples matrix of the experiences from the replay buffer.
+        """
+        query = self.head_wq(s)
+        keys = self.head_wk(phi_s)
+        values = phi_a
+        #W is Q * K^T
+        W = torch.matmul(
+            # [batch_size, hidden_dim] -> [batch_size, 1, hidden_dim]
+            query[:, None, :],
+            # [batch_size, k, hidden_dim] -> [batch_size, hidden_dim, k]
+            keys.permute(0, 2, 1) #transpose the keys matrix
+        )
+        logits = W.squeeze(1) / self.att_temp
+        topk_logits, topk_indices = torch.topk(
+            logits, 
+            self.top_k,
+            dim=-1
+        )
+        weights = F.softmax(topk_logits, dim=-1) # [batch_size, top_k]
+
+        topk_values = torch.gather(
+            values,
+            dim=1,
+            index=topk_indices.unsqueeze(-1).expand(-1, -1, values.size(-1))
+        )
+
+        retrieved_action = torch.sum(weights.unsqueeze(-1) * topk_values, dim=1)
+
+        return retrieved_action, weights
+        
+    
     def attention_out(self, s, phi_s, phi_a):
         """
         Returns the most similar state-action pairs and the linear composition of actions.
@@ -175,34 +212,28 @@ class SingleNet(nn.Module):
             phi_s = phi_s_base.unsqueeze(0).expand(batch_size, -1, -1)
             phi_a = phi_a_base.unsqueeze(0).expand(batch_size, -1, -1)
 
-            similarities = F.cosine_similarity(s.unsqueeze(1), phi_s, dim=-1)
-            
-            topk_scores, topk_indices = torch.topk(similarities, self.top_k, dim=1)
-            idx_s = topk_indices.unsqueeze(-1).expand(-1, -1, phi_s.size(2))
-            idx_a = topk_indices.unsqueeze(-1).expand(-1, -1, phi_a.size(2))
+            # rapid_out, rapid_weight = self.rapid(s, phi_s_topk, phi_a_topk)
 
-            phi_s_topk = torch.gather(phi_s, 1, idx_s) # [batch_size, k_actual, state_dim]
-            phi_a_topk = torch.gather(phi_a, 1, idx_a)
+            att_out, att_weight = self.retrieve(s, phi_s, phi_a)
 
-            att_out, att_weight = self.attention_out(s, phi_s=phi_s_topk, phi_a=phi_a_topk)
+        # concat context and current state
+        # policy_in = torch.hstack([att_out, s])
+        # policy_out = self.policy_out(policy_in)
 
-            lin_val = torch.matmul(att_weight, phi_a_topk)
-
-        policy_in = torch.hstack([att_out, s])
-        out = self.policy_out(policy_in)
-        policy_out = out
+        policy_out = self.policy_out(s)
+        # out_temp = policy_out + att_out
         # a_temp = att_out + self.policy_out
 
         # Normalization
-        # out = logit2prob(policy_out)
+        # final_out = logit2prob(out_temp)
 
-        ret_vals = [out]
+        ret_vals = [policy_out]
         if ret_att_out:
             ret_vals.append(att_weight)
         if ret_int_pol:
             ret_vals.append(policy_out)
         if ret_lin_val:
-            ret_vals.append(lin_val)
+            ret_vals.append(att_out)
         return ret_vals
     
 if __name__ == "__main__":

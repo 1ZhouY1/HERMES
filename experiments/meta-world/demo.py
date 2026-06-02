@@ -71,3 +71,8 @@ if __name__ == "__main__":
     print(action.shape)
     target_entropy = -torch.prod(torch.Tensor(action.shape))
     print(target_entropy)
+
+    rnn = nn.RNN(input_size=3, hidden_size=5, num_layers=1, batch_first=True)
+    input = torch.randn(2, 4, 3) # (batch_size, seq_len, input_size)
+    output, h_n = rnn(input)
+    print(f'output shape: {output.shape}, h_n shape: {h_n.shape}')
