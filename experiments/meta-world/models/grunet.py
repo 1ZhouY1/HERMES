@@ -2,8 +2,13 @@ import torch
 import torch.nn as nn
 import os
 
+try:
+    from .shared_arch import shared
+except ImportError:
+    from shared_arch import shared
 
-class GRUAgent(nn.Module):
+
+class GRUMLPAgent(nn.Module):
     def __init__(
         self,
         obs_dim,
@@ -25,15 +30,20 @@ class GRUAgent(nn.Module):
             batch_first=True,
         )
 
+        # GRU 的最后隐状态维度是 hidden_dim
+        # 所以 shared 的输入维度应该是 hidden_dim
+        self.fc = shared(input_dim=hidden_dim)
+
         self.fc_mean = None
         self.fc_logstd = None
         self.reset_heads()
 
     def reset_heads(self):
-        self.fc_mean = nn.Linear(self.hidden_dim, self.act_dim)
-        self.fc_logstd = nn.Linear(self.hidden_dim, self.act_dim)
+        # 假设 shared(...) 的输出维度是 256
+        self.fc_mean = nn.Linear(256, self.act_dim)
+        self.fc_logstd = nn.Linear(256, self.act_dim)
 
-    def forward(self, x, h=None):
+    def forward(self, x, h=None, return_hidden=False):
         """
         x:
             [batch_size, obs_dim]
@@ -42,19 +52,35 @@ class GRUAgent(nn.Module):
 
         h:
             [gru_layers, batch_size, hidden_dim]
+
+        return:
+            默认返回:
+                mean, log_std
+
+            如果 return_hidden=True:
+                mean, log_std, h
         """
 
-        # 如果输入是单步状态 [B, obs_dim]，转成 [B, 1, obs_dim]
+        # 单步输入 [B, obs_dim] -> [B, 1, obs_dim]
         if x.dim() == 2:
             x = x.unsqueeze(1)
 
+        # gru_out: [B, seq_len, hidden_dim]
+        # h: [gru_layers, B, hidden_dim]
         gru_out, h = self.gru(x, h)
 
-        # 取最后一个时间步
-        last_out = gru_out[:, -1, :]
+        # 取最后一层 GRU 的最后隐状态
+        # shape: [B, hidden_dim]
+        last_hidden = h[-1]
 
-        mean = self.fc_mean(last_out)
-        log_std = self.fc_logstd(last_out)
+        # 把 GRU 最后的 hidden state 送入 MLP
+        x = self.fc(last_hidden)
+
+        mean = self.fc_mean(x)
+        log_std = self.fc_logstd(x)
+
+        if return_hidden:
+            return mean, log_std, h
 
         return mean, log_std
 
@@ -71,17 +97,21 @@ class GRUAgent(nn.Module):
 
 
 if __name__ == "__main__":
-    agent = GRUAgent(obs_dim=4, act_dim=4)
+    agent = GRUMLPAgent(obs_dim=4, act_dim=4)
 
     # 单步输入
     x = torch.randn(8, 4)
-    mean, log_std, h = agent(x)
-    print(mean.shape, log_std.shape, h.shape)
+    mean, log_std, h = agent(x, return_hidden=True)
+    print(mean.shape)      # torch.Size([8, 4])
+    print(log_std.shape)   # torch.Size([8, 4])
+    print(h.shape)         # torch.Size([1, 8, 256])
 
     # 序列输入
     x_seq = torch.randn(8, 10, 4)
-    mean, log_std, h = agent(x_seq)
-    print(mean.shape, log_std.shape, h.shape)
+    mean, log_std, h = agent(x_seq, return_hidden=True)
+    print(mean.shape)      # torch.Size([8, 4])
+    print(log_std.shape)   # torch.Size([8, 4])
+    print(h.shape)         # torch.Size([1, 8, 256])
 
-    dirname = "runs/test_gru"
+    dirname = "runs/test_gru_mlp"
     agent.save(dirname)

@@ -13,13 +13,13 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, GRUAgent
+from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'sdnet-rapid', 'grunet', 'only-sdnet'] 
+    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'grumlp', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl'] 
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
@@ -79,6 +79,15 @@ class Args:
     autotune: bool = True
     """automatic tuning of the entropy coefficient"""
 
+    ragnet_n_traj: int = 64
+    traj_len: int = 50
+    ragnet_traj_len: int = 50
+    """the trajectory number and length for the RAGNet's long term memory"""
+
+    # for hybrid RARL
+    hr_n_traj = 512
+    hr_traj_len: int = 50
+
 
 
 def make_env(task_id):
@@ -89,12 +98,20 @@ def make_env(task_id):
 
     return thunk
 
-class SoftQNetwork(nn.Module):
-    def __init__(self, envs):
+class SoftContextQNetwork(nn.Module):
+    def __init__(self, envs, context):
         super().__init__()
         self.fc = shared(
             np.array(envs.observation_space.shape).prod()
             + np.prod(envs.action_space.shape)
+            + context.shape
+        )
+
+class SoftQNetwork(nn.Module):
+    def __init__(self, feature_dim, act_dim):
+        super().__init__()
+        self.fc = shared(
+            feature_dim + act_dim
         ) 
         self.fc_out = nn.Linear(256, 1)
 
@@ -184,6 +201,17 @@ def eval_agent(agent, test_env, num_evals, global_step, writer, device):
     writer.add_scalar("charts/test_episodic_return", avg_ep_ret, global_step)
     writer.add_scalar("charts/test_success", avg_success, global_step)
 
+def sample_ragnet_memory_batch(longterm_memory, n_traj, device):
+    traj_batch = longterm_memory.sample_trajectories(
+        n_traj=n_traj,
+        device=device,
+    )
+
+    return {
+        "obs": traj_batch.states,
+        "actions": traj_batch.actions,
+        "rewards": traj_batch.rewards,
+    }
 
 if __name__ == '__main__':
     # envs = gym.vector.SyncVectorEnv([make_env(0)]) # The SyncVectorEnv method requires a list of function as input
@@ -245,6 +273,11 @@ if __name__ == '__main__':
         handle_timeout_termination=False,
     )
 
+    longterm_memory = None
+    cache_states = []
+    cache_actions = []
+    cache_rewards = []
+
     if args.model_type == 'finetune':
         assert(
             len(args.prev_units) > 0
@@ -252,11 +285,31 @@ if __name__ == '__main__':
     
     if args.model_type == 'simple':
         model = SimpleAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
-    elif args.model_type == 'grunet':
-        model = GRUAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
+    elif args.model_type == 'grumlp':
+        model = GRUMLPAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
     elif args.model_type == 'finetune':
         model = SimpleAgent.load(
             args.prev_units[0], map_location=device, reset_heads=True
+        ).to(device)
+    elif args.model_type in ['ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only']:
+
+        longterm_memory = LongTermMemory(
+            capacity=args.buffer_size,
+            traj_len=50,
+            obs_dim=obs_dim,
+            action_dim=act_dim,
+            reward_dim=1,
+            device=device,
+        )
+
+        model = RAGNetAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            state_dim=128,
+            summary_dim=256,
+            context_dim=128,
+            hidden_dim=256,
+            top_k=10,
         ).to(device)
     elif args.model_type in ['sdnet', 'sdnet-rapid', 'only-sdnet']:
         model = SingleNetAgent(
@@ -268,10 +321,23 @@ if __name__ == '__main__':
     # Ignore the ProgNet and PackNet methods
 
     actor = Actor(envs, model).to(device)
-    qf1 = SoftQNetwork(envs).to(device)
-    qf2 = SoftQNetwork(envs).to(device)
-    qf1_target = SoftQNetwork(envs).to(device)
-    qf2_target = SoftQNetwork(envs).to(device)
+    
+    if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
+        critic_feature_dim = actor.model.net_mean.policy_input_dim,
+    else:
+        critic_feature_dim = obs_dim
+
+    critic_feature_dim = critic_feature_dim[0]
+    obs_dim = np.array(envs.single_observation_space.shape).prod()
+    act_dim = np.prod(envs.single_action_space.shape)
+    print("critic_feature_dim =", critic_feature_dim, type(critic_feature_dim))
+    print("act_dim =", act_dim, type(act_dim))
+    print("critic input dim =", critic_feature_dim + act_dim, type(critic_feature_dim + act_dim))
+
+    qf1 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+    qf2 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+    qf1_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+    qf2_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(
@@ -291,28 +357,115 @@ if __name__ == '__main__':
         alpha = args.alpha
     
     start_time = time.time()
-
+    cache_states = []
+    cache_actions = []
+    cache_rewards = []
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
+        
         # ALGO LOGIC: put action logic here
         if global_step < args.random_actions_end:
             actions = np.array(
                 [envs.single_action_space.sample() for _ in range(envs.num_envs)]
             )
         else:
-            if args.model_type in ['sdnet', 'sdnet-rapid'] and global_step % 1000 == 0:
+            obs_tensor = torch.Tensor(obs).to(device)
+
+            if args.model_type in ["ragnet", "ragnet-wo-context", 'ragnet-wo-a', 'ragnet-concat-only']:
+                assert len(longterm_memory) > 0, (
+                    "RAGNet starts acting after random_actions_end, but LongTermMemory is empty. "
+                    "Increase random_actions_end or decrease ragnet_traj_len."
+                )
+
+                memory_batch = sample_ragnet_memory_batch(
+                    longterm_memory=longterm_memory,
+                    n_traj=args.ragnet_n_traj,
+                    device=device,
+                )
+
+                if global_step % 1000 == 0:
+                    actions, _, _ = actor.get_action(
+                        obs_tensor,
+                        memory_batch=memory_batch,
+                        writer=writer,
+                        global_step=global_step,
+                    )
+                else:
+                    actions, _, _ = actor.get_action(
+                        obs_tensor,
+                        memory_batch=memory_batch,
+                    )
+
+            elif args.model_type in ["component", 'sdnet', 'sdnet-rapid'] and global_step % 1000 == 0:
                 actions, _, _ = actor.get_action(
-                    torch.Tensor(obs).to(device),
+                    obs_tensor,
                     writer=writer,
                     global_step=global_step,
                 )
+
             else:
-                actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+                actions, _, _ = actor.get_action(obs_tensor)
+
             actions = actions.detach().cpu().numpy()
         
         # TRY NOT TO MODIFY: execute the game and log data
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+        if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
+            state_to_cache = np.asarray(obs[0], dtype=np.float32).reshape(-1)
+            action_to_cache = np.asarray(actions[0], dtype=np.float32).reshape(-1)
+            reward_to_cache = np.asarray([rewards[0]], dtype=np.float32).reshape(-1)
+
+            assert state_to_cache.shape == (obs_dim,), \
+                f"cached state shape should be {(obs_dim,)}, got {state_to_cache.shape}"
+
+            assert action_to_cache.shape == (act_dim,), \
+                f"cached action shape should be {(act_dim,)}, got {action_to_cache.shape}"
+
+            assert reward_to_cache.shape == (1,), \
+                f"cached reward shape should be {(1,)}, got {reward_to_cache.shape}"
+
+            cache_states.append(state_to_cache)
+            cache_actions.append(action_to_cache)
+            cache_rewards.append(reward_to_cache)
+
+            if len(cache_states) == 50:
+                traj_states = torch.as_tensor(
+                    np.stack(cache_states, axis=0),
+                    dtype=torch.float32,
+                    device=device,
+                )
+
+                traj_actions = torch.as_tensor(
+                    np.stack(cache_actions, axis=0),
+                    dtype=torch.float32,
+                    device=device,
+                )
+
+                traj_rewards = torch.as_tensor(
+                    np.stack(cache_rewards, axis=0),
+                    dtype=torch.float32,
+                    device=device,
+                )
+
+                assert traj_states.shape == (args.ragnet_traj_len, obs_dim), \
+                    f"traj_states should be {(args.ragnet_traj_len, obs_dim)}, got {traj_states.shape}"
+
+                assert traj_actions.shape == (args.ragnet_traj_len, act_dim), \
+                    f"traj_actions should be {(args.ragnet_traj_len, act_dim)}, got {traj_actions.shape}"
+
+                assert traj_rewards.shape == (args.ragnet_traj_len, 1), \
+                    f"traj_rewards should be {(args.ragnet_traj_len, 1)}, got {traj_rewards.shape}"
+
+                longterm_memory.add_trajectory(
+                    states=traj_states,
+                    actions=traj_actions,
+                    rewards=traj_rewards,
+                )
+
+                cache_states.clear()
+                cache_actions.clear()
+                cache_rewards.clear()
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -344,10 +497,20 @@ if __name__ == '__main__':
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
+            ragnet_kwargs = {}
+
+            if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
+                memory_batch = sample_ragnet_memory_batch(
+                    longterm_memory=longterm_memory,
+                    n_traj=args.ragnet_n_traj,
+                    device=device,
+                )
+                ragnet_kwargs["memory_batch"] = memory_batch
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(
-                    data.next_observations
-                )
+                    data.next_observations,
+                    **ragnet_kwargs,
+    )
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = (
@@ -373,7 +536,11 @@ if __name__ == '__main__':
             if global_step % args.policy_frequency == 0: # TD 3 Delayed update support
                 for _ in range(args.policy_frequency):
                     # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    pi, log_pi, _ = actor.get_action(data.observations)
+                    pi, log_pi, _ = actor.get_action(
+                        data.observations,
+                        **ragnet_kwargs,
+                    )
+                    
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi)
@@ -391,7 +558,10 @@ if __name__ == '__main__':
 
                     if args.autotune:
                         with torch.no_grad():
-                            _, log_pi, _ = actor.get_action(data.observations)
+                            _, log_pi, _ = actor.get_action(
+                                data.observations,
+                                **ragnet_kwargs,
+                            )
                         alpha_loss = (
                             -log_alpha.exp() * (log_pi + target_entropy)
                         ).mean()

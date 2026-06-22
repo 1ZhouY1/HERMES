@@ -19,8 +19,21 @@ def parse_args():
             "packnet",
             "sdnet",
             "sdnet-rapid",
-            "grunet",
+            "grumlp",
             "only-sdnet",
+            "ragnet",
+            "ragnet-wo-context",
+            "ragnet-wo-a",
+            "ragnet-concat-only",
+            "hybridrarl",
+            "hybridrarl-wo-gate",
+            "hybrid_add_norm",
+            "hybrid-encoder",
+            "hybrid-context",
+            "hybrid-raw-encoder",
+            "hybrid-raw-context",
+            "hybrid-raw",
+            "rarl",
         ],
         required=True,
     )
@@ -33,10 +46,10 @@ def parse_args():
 
 args = parse_args()
 
-modes = list(range(20)) if args.algorithm != "simple" or "sdnet" or "sdnet-rapid" or "grunet" or "only-sdnet" else list(range(10))
+modes = list(range(20)) if args.algorithm != "simple" or "sdnet" or "sdnet-rapid" or "grumlp" or "only-sdnet" or "ragnet" or "ragnet-wo-context" or "ragnet-wo-a" or "ragnet-concat-only" else list(range(10))
 
 # NOTE: If the algoritm is not `simple`, it always should start from the second task
-if args.algorithm not in ["simple", "packnet", "prognet", "sdnet", "sdnet-rapid", "grunet", "only-sdnet"] and args.start_mode == 0:
+if args.algorithm not in ["simple", "packnet", "prognet", "sdnet", "sdnet-rapid", "grumlp", "only-sdnet", "ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only", "hybridrarl", "hybridrarl-wo-gate", "hybrid_add_norm", "hybrid-encoder", "hybrid-context", "hybrid-raw-encoder", "hybrid-raw-context", "hybrid-raw", "rarl"] and args.start_mode == 0:
     start_mode = 1
 else:
     start_mode = args.start_mode
@@ -61,7 +74,8 @@ for i, task_id in enumerate(modes[first_idx:]):
             params += f" --prev-units agents/{run_name(task_id-1)}"
 
     # Launch experiment
-    cmd = f"python3 SAC.py {params}"
+    # cmd = f"python3 SAC.py {params}"
+    cmd = f"python3 SAC_hybridRAGRL.py {params}"
     print(cmd)
 
     if not args.no_run:
