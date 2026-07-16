@@ -220,3 +220,4 @@ experiments/halfcheetah/runs/
 experiments/halfcheetah/agents/
 experiments/meta-world/agents/
 experiments/meta-world/runs/
+*.tar.gz

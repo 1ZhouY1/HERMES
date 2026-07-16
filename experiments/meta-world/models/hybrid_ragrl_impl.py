@@ -622,8 +622,12 @@ class HybridRAGRLActorCore(nn.Module):
         top_k_exact: int = 16,
         gate_init: float = -4.0,
         use_layer_norm_exact: bool = True,
+        fusion_mode: str = "residual",
     ):
         super().__init__()
+        assert fusion_mode in ["residual", "mixture"], (
+            "fusion_mode should be 'residual' or 'mixture'"
+        )
 
         self.obs_dim = int(obs_dim)
         self.action_dim = int(action_dim)
@@ -632,6 +636,7 @@ class HybridRAGRLActorCore(nn.Module):
         self.hidden_dim = int(hidden_dim)
         self.top_r = int(top_r)
         self.top_k_exact = int(top_k_exact)
+        self.fusion_mode = fusion_mode
 
         self.encoder = GRUStateEncoder(
             obs_dim=self.obs_dim,
@@ -832,7 +837,7 @@ class HybridRAGRLActorCore(nn.Module):
         a2 = self.base_policy(s)
         a1 = self.retrieval_policy(torch.cat([s, a_ret], dim=-1))
 
-        # 8. Gated residual fusion.
+        # 8. Gated fusion.
         gate = torch.sigmoid(self.retrieval_gate)
 
         # Hybrid Encoder method
@@ -840,8 +845,12 @@ class HybridRAGRLActorCore(nn.Module):
         # Hybrid Context method
         # mean = a1
 
-        # Original HybridRAGRL method
-        mean = a2 + gate * a1
+        if self.fusion_mode == "residual":
+            mean = a2 + gate * a1
+        elif self.fusion_mode == "mixture":
+            mean = (1.0 - gate) * a2 + gate * a1
+        else:
+            raise RuntimeError(f"Unknown fusion_mode={self.fusion_mode}")
 
         # mean = a2 + a1
         # mean = F.softmax(logits, dim=1)
@@ -873,6 +882,7 @@ class HybridRAGRLActorCore(nn.Module):
             "a1_retrieval_delta": a1,
             "a2_base_mean": a2,
             "retrieval_gate": gate,
+            "fusion_mode": self.fusion_mode,
             "mean": mean,
         }
 
@@ -914,6 +924,7 @@ class HybridRAGRLAgent(nn.Module):
         top_r: int = 8,
         top_k_exact: int = 16,
         gate_init: float = -4.0,
+        fusion_mode: str = "residual",
     ):
         super().__init__()
 
@@ -922,6 +933,7 @@ class HybridRAGRLAgent(nn.Module):
         self.n_traj = int(n_traj)
         self.memory = memory
         self.state_dim = int(state_dim)
+        self.fusion_mode = fusion_mode
 
         self.net_mean = HybridRAGRLActorCore(
             obs_dim=self.obs_dim,
@@ -935,6 +947,7 @@ class HybridRAGRLAgent(nn.Module):
             top_r=top_r,
             top_k_exact=top_k_exact,
             gate_init=gate_init,
+            fusion_mode=fusion_mode,
         )
 
         # logstd branch uses encoded state s_t.
@@ -1003,16 +1016,19 @@ class HybridRAGRLAgent(nn.Module):
 
     def save(self, dirname: str, save_memory: bool = False) -> None:
         os.makedirs(dirname, exist_ok=True)
-        torch.save(self.net_mean, os.path.join(dirname, "net_mean.pt"))
-        torch.save(self.net_logstd, os.path.join(dirname, "net_logstd.pt"))
         torch.save(
             {
-                "obs_dim": self.obs_dim,
-                "act_dim": self.act_dim,
-                "n_traj": self.n_traj,
-                "state_dim": self.state_dim,
+                "net_mean": self.net_mean,
+                "net_logstd": self.net_logstd,
+                "meta": {
+                    "obs_dim": self.obs_dim,
+                    "act_dim": self.act_dim,
+                    "n_traj": self.n_traj,
+                    "state_dim": self.state_dim,
+                    "fusion_mode": self.fusion_mode,
+                },
             },
-            os.path.join(dirname, "hybrid_ragrl_meta.pt"),
+            os.path.join(dirname, "model.pt"),
         )
 
         if save_memory and self.memory is not None:

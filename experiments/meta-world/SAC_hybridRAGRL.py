@@ -20,10 +20,14 @@ import torch.nn.functional as F
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'grumlp', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw-context', 'hybrid-raw'] 
+    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'grumlp', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw-context', 'hybrid-raw', 'hybrid', 'gate'] 
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
+    save_every: int = 0
+    """Save an intermediate checkpoint every N environment steps. 0 disables periodic saving"""
+    save_memory: bool = False
+    """If toggled, save LongTermMemory together with agents that support it"""
     prev_units: Tuple[pathlib.Path, ...] = ()
     """Paths to the previous models. Not required when model_type is `simple` or `packnet` or `prognet` or `sdnet`"""
     exp_name: str = os.path.basename(__file__)[: -len('.py')]
@@ -261,6 +265,17 @@ def sample_ragnet_memory_batch(longterm_memory, n_traj, device):
         "rewards": traj_batch.rewards,
     }
 
+
+def save_agent(model, dirname, save_memory=False):
+    if save_memory and hasattr(model, "memory"):
+        model.save(dirname=dirname, save_memory=True)
+    else:
+        model.save(dirname=dirname)
+
+
+def longterm_capacity_from_transition_budget(buffer_size, traj_len):
+    return max(1, int(buffer_size) // int(traj_len))
+
 if __name__ == '__main__':
     # envs = gym.vector.SyncVectorEnv([make_env(0)]) # The SyncVectorEnv method requires a list of function as input
     # high = envs.single_action_space.high
@@ -288,7 +303,9 @@ if __name__ == '__main__':
     raw_types = [
         "hybrid-raw-encoder",
         "hybrid-raw-context",
-        "hybrid-raw"
+        "hybrid-raw",
+        "hybrid",
+        "gate",
     ]
 
     rarl_types = [
@@ -297,6 +314,10 @@ if __name__ == '__main__':
 
     memory_types = ragnet_types + hybrid_types + rarl_types
     hr_memory_types = hybrid_types + rarl_types
+    fusion_mode_by_model_type = {
+        "gate": "mixture",
+        "hybrid": "residual",
+    }
 
     run_name = f'task_{args.task_id}__{args.model_type}__{args.exp_name}__{args.seed}'
     print(f'\n*** Run name: {run_name} ***\n')
@@ -368,9 +389,17 @@ if __name__ == '__main__':
             args.prev_units[0], map_location=device, reset_heads=True
         ).to(device)
     elif args.model_type in ['ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only']:
+        longterm_capacity = longterm_capacity_from_transition_budget(
+            args.buffer_size,
+            args.ragnet_traj_len,
+        )
+        print(
+            f"*** LongTermMemory capacity: {longterm_capacity} trajectories "
+            f"({longterm_capacity * args.ragnet_traj_len} transitions)"
+        )
 
         longterm_memory = LongTermMemory(
-            capacity=args.buffer_size,
+            capacity=longterm_capacity,
             traj_len=args.ragnet_traj_len,
             obs_dim=obs_dim,
             action_dim=act_dim,
@@ -389,9 +418,17 @@ if __name__ == '__main__':
         ).to(device)
 
     elif args.model_type in hybrid_types + raw_types:
+        longterm_capacity = longterm_capacity_from_transition_budget(
+            args.buffer_size,
+            args.hr_traj_len,
+        )
+        print(
+            f"*** LongTermMemory capacity: {longterm_capacity} trajectories "
+            f"({longterm_capacity * args.hr_traj_len} transitions)"
+        )
 
         longterm_memory = LongTermMemory(
-            capacity=args.buffer_size,
+            capacity=longterm_capacity,
             traj_len=args.hr_traj_len,
             obs_dim=obs_dim,
             action_dim=act_dim,
@@ -409,11 +446,21 @@ if __name__ == '__main__':
             hidden_dim=256,
             top_r=args.hr_top_r,
             top_k_exact=args.hr_top_k_exact,
+            fusion_mode=fusion_mode_by_model_type.get(args.model_type, "residual"),
         ).to(device)
     
     elif args.model_type == "rarl":
+        longterm_capacity = longterm_capacity_from_transition_budget(
+            args.buffer_size,
+            args.traj_len,
+        )
+        print(
+            f"*** LongTermMemory capacity: {longterm_capacity} trajectories "
+            f"({longterm_capacity * args.traj_len} transitions)"
+        )
+
         longterm_memory = LongTermMemory(
-            capacity=args.buffer_size,
+            capacity=longterm_capacity,
             traj_len=args.traj_len,
             obs_dim=obs_dim,
             action_dim=act_dim,
@@ -889,6 +936,16 @@ if __name__ == '__main__':
                         "losses/alpha_loss", alpha_loss.item(), global_step
                     )
 
+        current_step = global_step + 1
+        if args.save_dir is not None and args.save_every > 0 and current_step % args.save_every == 0:
+            checkpoint_dir = os.path.join(args.save_dir, run_name)
+            print(f"Saving checkpoint at step {current_step} in `{checkpoint_dir}`")
+            save_agent(
+                actor.model,
+                dirname=checkpoint_dir,
+                save_memory=args.save_memory,
+            )
+
     [
         eval_agent(actor, envs.envs[i], args.num_evals, global_step, writer, device)
         for i in range(envs.num_envs)
@@ -899,4 +956,8 @@ if __name__ == '__main__':
 
     if args.save_dir is not None:
         print(f'Saving trained agent in `{args.save_dir}` with name `{run_name}`')
-        actor.model.save(dirname=f'{args.save_dir}/{run_name}')
+        save_agent(
+            actor.model,
+            dirname=os.path.join(args.save_dir, run_name),
+            save_memory=args.save_memory,
+        )
