@@ -1,0 +1,190 @@
+{
+  "closest_task_pairs": [
+    {
+      "distance": 0.9957941770553589,
+      "task_i": 1,
+      "task_j": 6
+    },
+    {
+      "distance": 1.311227560043335,
+      "task_i": 1,
+      "task_j": 3
+    },
+    {
+      "distance": 1.507966160774231,
+      "task_i": 6,
+      "task_j": 7
+    },
+    {
+      "distance": 1.7320736646652222,
+      "task_i": 5,
+      "task_j": 9
+    },
+    {
+      "distance": 2.2160863876342773,
+      "task_i": 3,
+      "task_j": 6
+    },
+    {
+      "distance": 2.3554441928863525,
+      "task_i": 8,
+      "task_j": 9
+    },
+    {
+      "distance": 2.476628303527832,
+      "task_i": 1,
+      "task_j": 7
+    },
+    {
+      "distance": 2.846043825149536,
+      "task_i": 2,
+      "task_j": 9
+    },
+    {
+      "distance": 2.859989643096924,
+      "task_i": 1,
+      "task_j": 5
+    },
+    {
+      "distance": 2.868657112121582,
+      "task_i": 3,
+      "task_j": 5
+    }
+  ],
+  "farthest_task_pairs": [
+    {
+      "distance": 10.12990951538086,
+      "task_i": 0,
+      "task_j": 2
+    },
+    {
+      "distance": 10.117108345031738,
+      "task_i": 0,
+      "task_j": 3
+    },
+    {
+      "distance": 9.674155235290527,
+      "task_i": 0,
+      "task_j": 8
+    },
+    {
+      "distance": 9.586873054504395,
+      "task_i": 4,
+      "task_j": 8
+    },
+    {
+      "distance": 9.357210159301758,
+      "task_i": 0,
+      "task_j": 1
+    },
+    {
+      "distance": 9.26583194732666,
+      "task_i": 0,
+      "task_j": 6
+    },
+    {
+      "distance": 9.237634658813477,
+      "task_i": 0,
+      "task_j": 5
+    },
+    {
+      "distance": 8.90449333190918,
+      "task_i": 0,
+      "task_j": 7
+    },
+    {
+      "distance": 8.76476001739502,
+      "task_i": 2,
+      "task_j": 4
+    },
+    {
+      "distance": 8.620536804199219,
+      "task_i": 0,
+      "task_j": 9
+    }
+  ],
+  "memory_glob": "task_*__hybrid__SAC_hybridRAGRL__42",
+  "memory_root": "agents",
+  "nearest_centroid_accuracy": 0.79326,
+  "pca_explained_variance_ratio": [
+    0.2984674274921417,
+    0.14472560584545135,
+    0.11497032642364502
+  ],
+  "plot_samples_per_task": 1000,
+  "samples_per_task": 5000,
+  "tasks": [
+    {
+      "memory_trajectories": 200,
+      "name": "hammer-v2",
+      "sampled_states": 5000,
+      "task": 0
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "push-wall-v2",
+      "sampled_states": 5000,
+      "task": 1
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "faucet-close-v2",
+      "sampled_states": 5000,
+      "task": 2
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "push-back-v2",
+      "sampled_states": 5000,
+      "task": 3
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "stick-pull-v2",
+      "sampled_states": 5000,
+      "task": 4
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "handle-press-side-v2",
+      "sampled_states": 5000,
+      "task": 5
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "push-v2",
+      "sampled_states": 5000,
+      "task": 6
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "shelf-place-v2",
+      "sampled_states": 5000,
+      "task": 7
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "window-close-v2",
+      "sampled_states": 5000,
+      "task": 8
+    },
+    {
+      "memory_trajectories": 20000,
+      "name": "peg-unplug-side-v2",
+      "sampled_states": 5000,
+      "task": 9
+    }
+  ],
+  "within_radius": {
+    "0": 0.6908207535743713,
+    "1": 1.4000351428985596,
+    "2": 1.2701990604400635,
+    "3": 1.1298038959503174,
+    "4": 0.7748215794563293,
+    "5": 1.017715334892273,
+    "6": 1.3869919776916504,
+    "7": 1.085269570350647,
+    "8": 0.8160317540168762,
+    "9": 1.2868642807006836
+  }
+}

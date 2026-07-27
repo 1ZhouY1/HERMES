@@ -13,7 +13,7 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder
+from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder
 import torch.nn.functional as F
 
 
@@ -64,6 +64,10 @@ class Args:
     """timestep to start learning"""
     random_actions_end: int = 10_000
     """timesteps to take actions randomly"""
+    gru_seq_len: int = 20
+    """number of previous (observation, action, reward) transitions used for GRU context"""
+    gru_hidden_dim: int = 64
+    """hidden size for the single-layer actor/critic GRUs"""
     policy_lr: float = 1e-3
     """the learning rate of the policy network optimizer"""
     q_lr: float = 1e-3
@@ -151,14 +155,29 @@ class Actor(nn.Module):
         )
 
     def forward(self, x, **kwargs):
-        mean, log_std = self.model(x, **kwargs)
+        return_hidden = kwargs.get("return_hidden", False)
+        model_out = self.model(x, **kwargs)
+        if return_hidden:
+            mean, log_std, h = model_out
+        else:
+            mean, log_std = model_out
+            h = None
         log_std = torch.tanh(log_std)
         log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1) # From SpinUp / Dennis Yarats
+
+        if return_hidden:
+            return mean, log_std, h
 
         return mean, log_std
     
     def get_action(self, x, **kwargs):
-        mean, log_std = self(x, **kwargs)
+        return_hidden = kwargs.get("return_hidden", False)
+        forward_out = self(x, **kwargs)
+        if return_hidden:
+            mean, log_std, h = forward_out
+        else:
+            mean, log_std = forward_out
+            h = None
         std = log_std.exp() # exp(log_x) = x
         normal = torch.distributions.Normal(mean, std)
         x_t = normal.rsample() # for reparameterization trick (mean + std * sample ~ N(mean, std), where sample ~ N(0,1))
@@ -169,6 +188,8 @@ class Actor(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6) 
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
+        if return_hidden:
+            return action, log_prob, mean, h
         return action, log_prob, mean
 
 @torch.no_grad()
@@ -177,13 +198,29 @@ def eval_agent(agent, test_env, num_evals, global_step, writer, device):
     avg_ep_ret = 0
     avg_success = 0
     ep_ret = 0
+    gru_hidden = None
+    gru_cache = []
     for _ in range(num_evals):
         while True:
-            obs = torch.Tensor(obs).to(device).unsqueeze(0)
-            action, _ = agent(obs)
-            obs, reward, termination, truncation, info = test_env.step(
-                action[0].cpu().numpy()
-            )
+            obs_np = obs
+            obs = torch.Tensor(obs_np).to(device).unsqueeze(0)
+            if isinstance(agent.model, GRUMLPAgent):
+                gru_history = build_gru_history_sequence(
+                    history_cache=gru_cache,
+                    obs_dim=agent.model.obs_dim,
+                    act_dim=agent.model.act_dim,
+                    history_len=getattr(agent.model, "context_seq_len", 20),
+                    device=device,
+                )
+                _, _, action = agent.get_action(obs, history=gru_history)
+            else:
+                _, _, action = agent.get_action(obs)
+            action_np = action[0].cpu().numpy()
+            obs, reward, termination, truncation, info = test_env.step(action_np)
+
+            if isinstance(agent.model, GRUMLPAgent):
+                gru_cache.append(make_gru_history_item(obs_np, action_np, reward))
+                gru_cache[:] = gru_cache[-int(getattr(agent.model, "context_seq_len", 20)) :]
 
             ep_ret += reward
 
@@ -194,6 +231,8 @@ def eval_agent(agent, test_env, num_evals, global_step, writer, device):
                 #reset
                 obs, _ = test_env.reset()
                 ep_ret = 0
+                gru_hidden = None
+                gru_cache.clear()
                 break
     avg_ep_ret /= num_evals
     avg_success /= num_evals
@@ -212,6 +251,123 @@ def sample_ragnet_memory_batch(longterm_memory, n_traj, device):
         "actions": traj_batch.actions,
         "rewards": traj_batch.rewards,
     }
+
+
+def build_gru_history_sequence(history_cache, obs_dim, act_dim, history_len, device):
+    history_dim = int(obs_dim) + int(act_dim) + 1
+    history = np.zeros((int(history_len), history_dim), dtype=np.float32)
+    recent_history = history_cache[-int(history_len) :]
+    if len(recent_history) > 0:
+        history[-len(recent_history) :] = np.stack(recent_history, axis=0)
+
+    return torch.as_tensor(
+        history,
+        dtype=torch.float32,
+        device=device,
+    ).unsqueeze(0)
+
+
+def make_gru_history_item(obs, action, reward):
+    return np.concatenate(
+        [
+            np.asarray(obs, dtype=np.float32).reshape(-1),
+            np.asarray(action, dtype=np.float32).reshape(-1),
+            np.asarray([reward], dtype=np.float32).reshape(-1),
+        ],
+        axis=0,
+    )
+
+
+def unique_parameters(*modules):
+    params = []
+    seen = set()
+    for module in modules:
+        for param in module.parameters():
+            param_id = id(param)
+            if param_id not in seen:
+                params.append(param)
+                seen.add(param_id)
+    return params
+
+
+def soft_update_modules(source_modules, target_modules, tau):
+    seen_targets = set()
+    for source_module, target_module in zip(source_modules, target_modules):
+        for param, target_param in zip(
+            source_module.parameters(),
+            target_module.parameters(),
+        ):
+            target_id = id(target_param)
+            if target_id in seen_targets:
+                continue
+            target_param.data.copy_(
+                tau * param.data + (1 - tau) * target_param.data
+            )
+            seen_targets.add(target_id)
+
+
+def _serializable_args(args):
+    result = {}
+    for key, value in vars(args).items():
+        if isinstance(value, pathlib.Path):
+            result[key] = str(value)
+        elif isinstance(value, tuple):
+            result[key] = tuple(str(item) if isinstance(item, pathlib.Path) else item for item in value)
+        else:
+            result[key] = value
+    return result
+
+
+def save_sac_checkpoint(
+    dirname,
+    actor,
+    qf1,
+    qf2,
+    qf1_target,
+    qf2_target,
+    actor_optimizer,
+    q_optimizer,
+    args,
+    global_step,
+    alpha,
+    log_alpha=None,
+    a_optimizer=None,
+):
+    os.makedirs(dirname, exist_ok=True)
+    actor.model.save(dirname=dirname)
+
+    checkpoint = {
+        "type": "sac_full_checkpoint",
+        "model_type": args.model_type,
+        "global_step": int(global_step),
+        "args": _serializable_args(args),
+        "actor_state_dict": actor.state_dict(),
+        "actor_model_state_dict": actor.model.state_dict(),
+        "qf1_state_dict": qf1.state_dict(),
+        "qf2_state_dict": qf2.state_dict(),
+        "qf1_target_state_dict": qf1_target.state_dict(),
+        "qf2_target_state_dict": qf2_target.state_dict(),
+        "actor_optimizer_state_dict": actor_optimizer.state_dict(),
+        "q_optimizer_state_dict": q_optimizer.state_dict(),
+        "alpha": float(alpha),
+    }
+
+    if hasattr(qf1, "gru"):
+        checkpoint["critic_gru_state_dict"] = qf1.gru.state_dict()
+        checkpoint["critic_target_gru_state_dict"] = qf1_target.gru.state_dict()
+        checkpoint["critic_gru_shared_by_qf1_qf2"] = qf1.gru is qf2.gru
+        checkpoint["critic_target_gru_shared_by_qf1_qf2"] = qf1_target.gru is qf2_target.gru
+
+    if hasattr(actor.model, "gru"):
+        checkpoint["actor_gru_state_dict"] = actor.model.gru.state_dict()
+
+    if log_alpha is not None:
+        checkpoint["log_alpha"] = log_alpha.detach().cpu()
+    if a_optimizer is not None:
+        checkpoint["alpha_optimizer_state_dict"] = a_optimizer.state_dict()
+
+    torch.save(checkpoint, os.path.join(dirname, "sac_checkpoint.pt"))
+
 
 if __name__ == '__main__':
     # envs = gym.vector.SyncVectorEnv([make_env(0)]) # The SyncVectorEnv method requires a list of function as input
@@ -286,7 +442,13 @@ if __name__ == '__main__':
     if args.model_type == 'simple':
         model = SimpleAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
     elif args.model_type == 'grumlp':
-        model = GRUMLPAgent(obs_dim=obs_dim, act_dim=act_dim).to(device)
+        model = GRUMLPAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            hidden_dim=args.gru_hidden_dim,
+            gru_layers=1,
+        ).to(device)
+        model.context_seq_len = args.gru_seq_len
     elif args.model_type == 'finetune':
         model = SimpleAgent.load(
             args.prev_units[0], map_location=device, reset_heads=True
@@ -323,26 +485,65 @@ if __name__ == '__main__':
     actor = Actor(envs, model).to(device)
     
     if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
-        critic_feature_dim = actor.model.net_mean.policy_input_dim,
+        critic_feature_dim = actor.model.net_mean.policy_input_dim
     else:
         critic_feature_dim = obs_dim
 
-    critic_feature_dim = critic_feature_dim[0]
     obs_dim = np.array(envs.single_observation_space.shape).prod()
     act_dim = np.prod(envs.single_action_space.shape)
     print("critic_feature_dim =", critic_feature_dim, type(critic_feature_dim))
     print("act_dim =", act_dim, type(act_dim))
     print("critic input dim =", critic_feature_dim + act_dim, type(critic_feature_dim + act_dim))
 
-    qf1 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
-    qf2 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
-    qf1_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
-    qf2_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+    if args.model_type == "grumlp":
+        critic_gru = nn.GRU(
+            input_size=int(obs_dim) + int(act_dim) + 1,
+            hidden_size=args.gru_hidden_dim,
+            num_layers=1,
+            batch_first=True,
+        ).to(device)
+        critic_target_gru = nn.GRU(
+            input_size=int(obs_dim) + int(act_dim) + 1,
+            hidden_size=args.gru_hidden_dim,
+            num_layers=1,
+            batch_first=True,
+        ).to(device)
+        qf1 = RecurrentSoftQNetwork(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            hidden_dim=args.gru_hidden_dim,
+            gru_layers=1,
+            gru=critic_gru,
+        ).to(device)
+        qf2 = RecurrentSoftQNetwork(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            hidden_dim=args.gru_hidden_dim,
+            gru_layers=1,
+            gru=critic_gru,
+        ).to(device)
+        qf1_target = RecurrentSoftQNetwork(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            hidden_dim=args.gru_hidden_dim,
+            gru_layers=1,
+            gru=critic_target_gru,
+        ).to(device)
+        qf2_target = RecurrentSoftQNetwork(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            hidden_dim=args.gru_hidden_dim,
+            gru_layers=1,
+            gru=critic_target_gru,
+        ).to(device)
+    else:
+        qf1 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+        qf2 = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+        qf1_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
+        qf2_target = SoftQNetwork(critic_feature_dim, act_dim).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
-    q_optimizer = optim.Adam(
-        list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr
-    )
+    q_optimizer = optim.Adam(unique_parameters(qf1, qf2), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
 
     # Automatic entropy tuning
@@ -360,8 +561,10 @@ if __name__ == '__main__':
     cache_states = []
     cache_actions = []
     cache_rewards = []
+    gru_history_cache = []
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
+    gru_hidden = None
     for global_step in range(args.total_timesteps):
         
         # ALGO LOGIC: put action logic here
@@ -404,6 +607,17 @@ if __name__ == '__main__':
                     global_step=global_step,
                 )
 
+            elif args.model_type == "grumlp":
+                gru_history = build_gru_history_sequence(
+                    history_cache=gru_history_cache,
+                    obs_dim=obs_dim,
+                    act_dim=act_dim,
+                    history_len=args.gru_seq_len,
+                    device=device,
+                )
+                with torch.no_grad():
+                    actions, _, _ = actor.get_action(obs_tensor, history=gru_history)
+
             else:
                 actions, _, _ = actor.get_action(obs_tensor)
 
@@ -411,6 +625,23 @@ if __name__ == '__main__':
         
         # TRY NOT TO MODIFY: execute the game and log data
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+        if args.model_type == "grumlp" and gru_hidden is not None:
+            done_mask = torch.as_tensor(
+                np.logical_or(terminations, truncations),
+                dtype=torch.bool,
+                device=device,
+            )
+            if done_mask.any():
+                gru_hidden[:, done_mask, :] = 0.0
+
+        if args.model_type == "grumlp":
+            gru_history_cache.append(
+                make_gru_history_item(obs[0], actions[0], rewards[0])
+            )
+            gru_history_cache[:] = gru_history_cache[-int(args.gru_seq_len) :]
+            if bool(np.logical_or(terminations, truncations)[0]):
+                gru_history_cache.clear()
+
         if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
             state_to_cache = np.asarray(obs[0], dtype=np.float32).reshape(-1)
             action_to_cache = np.asarray(actions[0], dtype=np.float32).reshape(-1)
@@ -489,14 +720,27 @@ if __name__ == '__main__':
         for idx, trunc in enumerate(truncations):
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+        rb_dones = (
+            np.logical_or(terminations, truncations)
+            if args.model_type == "grumlp"
+            else terminations
+        )
+        rb.add(obs, real_next_obs, actions, rewards, rb_dones, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            data = rb.sample(args.batch_size)
+            if args.model_type == "grumlp":
+                data = sample_gru_replay_batch(
+                    replay_buffer=rb,
+                    batch_size=args.batch_size,
+                    history_len=args.gru_seq_len,
+                    device=device,
+                )
+            else:
+                data = rb.sample(args.batch_size)
             ragnet_kwargs = {}
 
             if args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
@@ -507,12 +751,41 @@ if __name__ == '__main__':
                 )
                 ragnet_kwargs["memory_batch"] = memory_batch
             with torch.no_grad():
+                next_actor_obs = (
+                    data.next_observations
+                    if args.model_type == "grumlp"
+                    else data.next_observations
+                )
+                actor_history_kwargs = (
+                    {"history": data.next_histories}
+                    if args.model_type == "grumlp"
+                    else {}
+                )
                 next_state_actions, next_state_log_pi, _ = actor.get_action(
-                    data.next_observations,
+                    next_actor_obs,
+                    **actor_history_kwargs,
                     **ragnet_kwargs,
-    )
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                )
+                next_q_obs = (
+                    data.next_observations
+                    if args.model_type == "grumlp"
+                    else data.next_observations
+                )
+                q_history_kwargs = (
+                    {"history": data.next_histories}
+                    if args.model_type == "grumlp"
+                    else {}
+                )
+                qf1_next_target = qf1_target(
+                    next_q_obs,
+                    next_state_actions,
+                    **q_history_kwargs,
+                )
+                qf2_next_target = qf2_target(
+                    next_q_obs,
+                    next_state_actions,
+                    **q_history_kwargs,
+                )
                 min_qf_next_target = (
                     torch.min(qf1_next_target, qf2_next_target)
                     - alpha * next_state_log_pi
@@ -521,8 +794,18 @@ if __name__ == '__main__':
                     1 - data.dones.flatten()
                 ) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            q_obs = (
+                data.observations
+                if args.model_type == "grumlp"
+                else data.observations
+            )
+            q_history_kwargs = (
+                {"history": data.histories}
+                if args.model_type == "grumlp"
+                else {}
+            )
+            qf1_a_values = qf1(q_obs, data.actions, **q_history_kwargs).view(-1)
+            qf2_a_values = qf2(q_obs, data.actions, **q_history_kwargs).view(-1)
 
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
@@ -536,13 +819,34 @@ if __name__ == '__main__':
             if global_step % args.policy_frequency == 0: # TD 3 Delayed update support
                 for _ in range(args.policy_frequency):
                     # compensate for the delay by doing 'actor_update_interval' instead of 1
+                    actor_obs = (
+                        data.observations
+                        if args.model_type == "grumlp"
+                        else data.observations
+                    )
+                    actor_history_kwargs = (
+                        {"history": data.histories}
+                        if args.model_type == "grumlp"
+                        else {}
+                    )
                     pi, log_pi, _ = actor.get_action(
-                        data.observations,
+                        actor_obs,
+                        **actor_history_kwargs,
                         **ragnet_kwargs,
                     )
                     
-                    qf1_pi = qf1(data.observations, pi)
-                    qf2_pi = qf2(data.observations, pi)
+                    q_pi_obs = (
+                        data.observations
+                        if args.model_type == "grumlp"
+                        else data.observations
+                    )
+                    q_pi_history_kwargs = (
+                        {"history": data.histories}
+                        if args.model_type == "grumlp"
+                        else {}
+                    )
+                    qf1_pi = qf1(q_pi_obs, pi, **q_pi_history_kwargs)
+                    qf2_pi = qf2(q_pi_obs, pi, **q_pi_history_kwargs)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -559,7 +863,8 @@ if __name__ == '__main__':
                     if args.autotune:
                         with torch.no_grad():
                             _, log_pi, _ = actor.get_action(
-                                data.observations,
+                                actor_obs,
+                                **actor_history_kwargs,
                                 **ragnet_kwargs,
                             )
                         alpha_loss = (
@@ -573,18 +878,11 @@ if __name__ == '__main__':
 
             # update the target networks
             if global_step % args.target_network_frequency == 0:
-                for param, target_param in zip(
-                    qf1.parameters(), qf1_target.parameters()
-                ):
-                    target_param.data.copy_(
-                        args.tau * param.data + (1 - args.tau) * target_param.data
-                    )
-                for param, target_param in zip(
-                    qf2.parameters(), qf2_target.parameters()
-                ):
-                    target_param.data.copy_(
-                        args.tau * param.data + (1 - args.tau) * target_param.data
-                    )
+                soft_update_modules(
+                    source_modules=(qf1, qf2),
+                    target_modules=(qf1_target, qf2_target),
+                    tau=args.tau,
+                )
             if global_step % 100 == 0:
                 writer.add_scalar(
                     'losses/qf1_values', qf1_a_values.mean().item(), global_step
@@ -628,4 +926,18 @@ if __name__ == '__main__':
 
     if args.save_dir is not None:
         print(f'Saving trained agent in `{args.save_dir}` with name `{run_name}`')
-        actor.model.save(dirname=f'{args.save_dir}/{run_name}')
+        save_sac_checkpoint(
+            dirname=f'{args.save_dir}/{run_name}',
+            actor=actor,
+            qf1=qf1,
+            qf2=qf2,
+            qf1_target=qf1_target,
+            qf2_target=qf2_target,
+            actor_optimizer=actor_optimizer,
+            q_optimizer=q_optimizer,
+            args=args,
+            global_step=global_step,
+            alpha=alpha,
+            log_alpha=log_alpha if args.autotune else None,
+            a_optimizer=a_optimizer if args.autotune else None,
+        )

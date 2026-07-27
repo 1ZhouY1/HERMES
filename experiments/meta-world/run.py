@@ -20,6 +20,7 @@ def parse_args():
             "sdnet",
             "sdnet-rapid",
             "grumlp",
+            "gnet",
             "only-sdnet",
             "ragnet",
             "ragnet-wo-context",
@@ -33,7 +34,6 @@ def parse_args():
             "hybrid-raw-encoder",
             "hybrid-raw-context",
             "hybrid-raw",
-            "hybrid",
             "rarl",
         ],
         required=True,
@@ -47,16 +47,16 @@ def parse_args():
 
 args = parse_args()
 
-modes = list(range(20)) if args.algorithm != "simple" or "sdnet" or "sdnet-rapid" or "grumlp" or "only-sdnet" or "ragnet" or "ragnet-wo-context" or "ragnet-wo-a" or "ragnet-concat-only" else list(range(10))
+modes = list(range(20)) if args.algorithm != "simple" or "sdnet" or "sdnet-rapid" or "grumlp" or "gnet" or "only-sdnet" or "ragnet" or "ragnet-wo-context" or "ragnet-wo-a" or "ragnet-concat-only" else list(range(10))
 
 # NOTE: If the algoritm is not `simple`, it always should start from the second task
-if args.algorithm not in ["simple", "packnet", "prognet", "sdnet", "sdnet-rapid", "grumlp", "only-sdnet", "ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only", "hybridrarl", "hybridrarl-wo-gate", "hybrid_add_norm", "hybrid-encoder", "hybrid-context", "hybrid-raw-encoder", "hybrid-raw-context", "hybrid-raw", "hybrid", "rarl"] and args.start_mode == 0:
+if args.algorithm not in ["simple", "packnet", "prognet", "sdnet", "sdnet-rapid", "grumlp", "gnet", "only-sdnet", "ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only", "hybridrarl", "hybridrarl-wo-gate", "hybrid_add_norm", "hybrid-encoder", "hybrid-context", "hybrid-raw-encoder", "hybrid-raw-context", "hybrid-raw", "rarl"] and args.start_mode == 0:
     start_mode = 1
 else:
     start_mode = args.start_mode
 
 run_name = (
-    lambda task_id: f"task_{task_id}__{args.algorithm if task_id > 0 or args.algorithm in ['packnet', 'prognet'] else 'simple'}__run_sac__{args.seed}"
+    lambda task_id: f"task_{task_id}__{args.algorithm if task_id > 0 or args.algorithm in ['packnet', 'prognet', 'gnet'] else 'simple'}__run_sac__{args.seed}"
 )
 
 first_idx = modes.index(start_mode)

@@ -1,0 +1,132 @@
+{
+  "output_csv": "analysis/simple_state_wasserstein.csv",
+  "output_pt": "analysis/simple_state_wasserstein.pt",
+  "metric": "sliced_wasserstein_2",
+  "normalized": true,
+  "task_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "task_names": [
+    "hammer-v2",
+    "push-wall-v2",
+    "faucet-close-v2",
+    "push-back-v2",
+    "stick-pull-v2",
+    "handle-press-side-v2",
+    "push-v2",
+    "shelf-place-v2",
+    "window-close-v2",
+    "peg-unplug-side-v2"
+  ],
+  "task_meta": [
+    {
+      "task_id": 0,
+      "task_name": "hammer-v2",
+      "model_dir": "agents/task_0__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 1639.1803916682516,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 1,
+      "task_name": "push-wall-v2",
+      "model_dir": "agents/task_1__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 21.939384717660584,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 2,
+      "task_name": "faucet-close-v2",
+      "model_dir": "agents/task_2__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 4676.43962847023,
+      "mean_success": 1.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 3,
+      "task_name": "push-back-v2",
+      "model_dir": "agents/task_3__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 5.495491062552947,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 4,
+      "task_name": "stick-pull-v2",
+      "model_dir": "agents/task_4__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 30.03803075983756,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 5,
+      "task_name": "handle-press-side-v2",
+      "model_dir": "agents/task_5__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 3835.7821466491937,
+      "mean_success": 0.8,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 6,
+      "task_name": "push-v2",
+      "model_dir": "agents/task_6__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 14.335350363509827,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 7,
+      "task_name": "shelf-place-v2",
+      "model_dir": "agents/task_7__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 0.0,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 8,
+      "task_name": "window-close-v2",
+      "model_dir": "agents/task_8__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 3915.4135979741136,
+      "mean_success": 1.0,
+      "mean_length": 500.0
+    },
+    {
+      "task_id": 9,
+      "task_name": "peg-unplug-side-v2",
+      "model_dir": "agents/task_9__simple__SAC__42",
+      "num_states": 5000,
+      "episodes_used": 10,
+      "mean_return": 3.304324718121843,
+      "mean_success": 0.0,
+      "mean_length": 500.0
+    }
+  ]
+}

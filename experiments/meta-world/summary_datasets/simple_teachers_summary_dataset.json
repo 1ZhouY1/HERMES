@@ -1,0 +1,86 @@
+{
+  "output": "summary_datasets/simple_teachers_summary_dataset.pt",
+  "num_episodes": 280,
+  "obs_shape": [
+    280,
+    501,
+    39
+  ],
+  "actions_shape": [
+    280,
+    500,
+    4
+  ],
+  "teachers": [
+    {
+      "task_id": 0,
+      "task_name": "hammer-v2",
+      "path": "agents/task_0__simple__SAC__42"
+    },
+    {
+      "task_id": 10,
+      "task_name": "hammer-v2",
+      "path": "agents/task_10__simple__SAC__42"
+    },
+    {
+      "task_id": 11,
+      "task_name": "push-wall-v2",
+      "path": "agents/task_11__simple__SAC__42"
+    },
+    {
+      "task_id": 12,
+      "task_name": "faucet-close-v2",
+      "path": "agents/task_12__simple__SAC__42"
+    },
+    {
+      "task_id": 13,
+      "task_name": "push-back-v2",
+      "path": "agents/task_13__simple__SAC__42"
+    },
+    {
+      "task_id": 1,
+      "task_name": "push-wall-v2",
+      "path": "agents/task_1__simple__SAC__42"
+    },
+    {
+      "task_id": 2,
+      "task_name": "faucet-close-v2",
+      "path": "agents/task_2__simple__SAC__42"
+    },
+    {
+      "task_id": 3,
+      "task_name": "push-back-v2",
+      "path": "agents/task_3__simple__SAC__42"
+    },
+    {
+      "task_id": 4,
+      "task_name": "stick-pull-v2",
+      "path": "agents/task_4__simple__SAC__42"
+    },
+    {
+      "task_id": 5,
+      "task_name": "handle-press-side-v2",
+      "path": "agents/task_5__simple__SAC__42"
+    },
+    {
+      "task_id": 6,
+      "task_name": "push-v2",
+      "path": "agents/task_6__simple__SAC__42"
+    },
+    {
+      "task_id": 7,
+      "task_name": "shelf-place-v2",
+      "path": "agents/task_7__simple__SAC__42"
+    },
+    {
+      "task_id": 8,
+      "task_name": "window-close-v2",
+      "path": "agents/task_8__simple__SAC__42"
+    },
+    {
+      "task_id": 9,
+      "task_name": "peg-unplug-side-v2",
+      "path": "agents/task_9__simple__SAC__42"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+{
+  "episodes": 20,
+  "format": "hybrid_policy_distillation_dataset_v1",
+  "max_steps": 500,
+  "seed": 42,
+  "tasks": [
+    {
+      "average_length": 500.0,
+      "average_return": 4438.284968290414,
+      "n_traj": 200,
+      "num_samples": 10000,
+      "path": "task_00.pt",
+      "success_rate": 1.0,
+      "task_id": 0,
+      "task_name": "hammer-v2",
+      "teacher_dir": "agents/task_0__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 200
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 553.8500681613434,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_01.pt",
+      "success_rate": 0.2,
+      "task_id": 1,
+      "task_name": "push-wall-v2",
+      "teacher_dir": "agents/task_1__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 4736.531925734462,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_02.pt",
+      "success_rate": 1.0,
+      "task_id": 2,
+      "task_name": "faucet-close-v2",
+      "teacher_dir": "agents/task_2__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 2299.6810706922342,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_03.pt",
+      "success_rate": 0.8,
+      "task_id": 3,
+      "task_name": "push-back-v2",
+      "teacher_dir": "agents/task_3__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 33.69050892249499,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_04.pt",
+      "success_rate": 0.0,
+      "task_id": 4,
+      "task_name": "stick-pull-v2",
+      "teacher_dir": "agents/task_4__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 4836.502492612346,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_05.pt",
+      "success_rate": 1.0,
+      "task_id": 5,
+      "task_name": "handle-press-side-v2",
+      "teacher_dir": "agents/task_5__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 20.50456439634349,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_06.pt",
+      "success_rate": 0.0,
+      "task_id": 6,
+      "task_name": "push-v2",
+      "teacher_dir": "agents/task_6__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 0.0,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_07.pt",
+      "success_rate": 0.0,
+      "task_id": 7,
+      "task_name": "shelf-place-v2",
+      "teacher_dir": "agents/task_7__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 3968.7880441961834,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_08.pt",
+      "success_rate": 1.0,
+      "task_id": 8,
+      "task_name": "window-close-v2",
+      "teacher_dir": "agents/task_8__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    },
+    {
+      "average_length": 500.0,
+      "average_return": 2664.0838762040394,
+      "n_traj": 256,
+      "num_samples": 10000,
+      "path": "task_09.pt",
+      "success_rate": 1.0,
+      "task_id": 9,
+      "task_name": "peg-unplug-side-v2",
+      "teacher_dir": "agents/task_9__hybrid__SAC_hybridRAGRL__42",
+      "teacher_memory_size": 20000
+    }
+  ],
+  "teacher_action_mode": "deterministic",
+  "teacher_glob": "task_*__hybrid__SAC_hybridRAGRL__42",
+  "teacher_root": "agents"
+}

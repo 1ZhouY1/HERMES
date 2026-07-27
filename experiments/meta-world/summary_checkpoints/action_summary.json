@@ -1,0 +1,15 @@
+{
+  "output": "summary_checkpoints/action_summary.pt",
+  "best_val_loss": 0.10948777553013393,
+  "obs_shape": [
+    280,
+    501,
+    39
+  ],
+  "actions_shape": [
+    280,
+    500,
+    4
+  ],
+  "summary_dim": 128
+}
