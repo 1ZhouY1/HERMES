@@ -1,4 +1,26 @@
 #!/usr/bin/env python3
+"""
+Compute pairwise sliced Wasserstein distances from saved transfer datasets.
+
+This script reads the .pt files produced by collect_prev_policy_on_current_task.py.
+By default it looks for:
+
+    transfer_datasets/prev_policy_on_current_task/tasks/target_task_*.pt
+
+Each file should contain:
+
+    {
+        "data": {
+            "observations": Tensor[N, obs_dim],
+            "next_observations": Tensor[N, obs_dim],
+            ...
+        },
+        "meta": {"target_task_id": int, ...}
+    }
+
+The output contains a CSV distance matrix, a .pt payload, and a JSON summary.
+"""
+
 import argparse
 import csv
 import json
@@ -8,213 +30,174 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
-import torch.nn as nn
 
-from tasks import get_task, get_task_name
+from tasks import get_task_name
 
 
-def safe_torch_load(path: Path, map_location):
+def safe_torch_load(path: Path, map_location="cpu"):
     try:
         return torch.load(path, map_location=map_location, weights_only=False)
     except TypeError:
         return torch.load(path, map_location=map_location)
 
 
-def first_output(out):
-    if isinstance(out, (tuple, list)):
-        return out[0]
-    return out
+def task_name(task_id: int) -> str:
+    try:
+        return get_task_name(task_id)
+    except Exception:
+        return f"task_{task_id}"
 
 
-def parse_task_id(path: Path) -> int:
-    match = re.search(r"task_(\d+)__", path.name)
-    if match is None:
-        raise ValueError(f"Cannot infer task id from teacher directory name: {path}")
-    return int(match.group(1))
+def infer_task_id(path: Path, payload) -> int:
+    if isinstance(payload, dict):
+        meta = payload.get("meta", {})
+        for key in ["target_task_id", "task_id", "source_task_id"]:
+            if key in meta and meta[key] is not None:
+                return int(meta[key])
+        for key in ["target_task_id", "task_id"]:
+            if key in payload and payload[key] is not None:
+                return int(payload[key])
+
+    for pattern in [r"target_task_(\d+)", r"task_(\d+)"]:
+        match = re.search(pattern, path.stem)
+        if match is not None:
+            return int(match.group(1))
+
+    raise ValueError(f"Cannot infer task id from {path}")
 
 
-def default_teacher_root() -> Path:
-    script_dir = Path(__file__).resolve().parent
-    local_agents = script_dir / "agents"
-    if local_agents.exists():
-        return local_agents
-    return Path("experiments/meta-world/agents")
+def as_numpy_2d(value, key: str, path: Path) -> np.ndarray:
+    if isinstance(value, torch.Tensor):
+        array = value.detach().cpu().numpy()
+    else:
+        array = np.asarray(value)
+
+    array = np.asarray(array, dtype=np.float32)
+    if array.ndim == 1:
+        array = array.reshape(1, -1)
+    if array.ndim != 2:
+        raise ValueError(f"{path}: expected {key} to be 2D, got shape {array.shape}")
+    return array
 
 
-def discover_teacher_dirs(
-    teacher_root: Path,
-    teacher_glob: str,
-    task_ids: Optional[Sequence[int]],
-) -> List[Path]:
-    if not teacher_root.exists():
-        raise FileNotFoundError(f"Teacher root does not exist: {teacher_root}")
+def extract_states(
+    payload,
+    path: Path,
+    state_key: str,
+    include_next_observations: bool,
+) -> np.ndarray:
+    if isinstance(payload, torch.Tensor):
+        return as_numpy_2d(payload, "tensor_payload", path)
 
-    wanted = None if task_ids is None else set(int(task_id) for task_id in task_ids)
-    by_task: Dict[int, Path] = {}
-    for path in sorted(teacher_root.glob(teacher_glob)):
-        if not path.is_dir():
-            continue
-        if not (path / "model.pt").exists():
-            continue
-        task_id = parse_task_id(path)
-        if wanted is not None and task_id not in wanted:
-            continue
-        by_task.setdefault(task_id, path)
+    if not isinstance(payload, dict):
+        raise TypeError(f"{path}: expected dict or tensor payload, got {type(payload)}")
 
-    if not by_task:
-        raise FileNotFoundError(
-            f"No simple teacher directories matching {teacher_glob!r} found under {teacher_root}"
-        )
-    return [by_task[task_id] for task_id in sorted(by_task)]
+    data = payload.get("data", payload)
+    if state_key in data:
+        states = as_numpy_2d(data[state_key], state_key, path)
+    elif "states" in data:
+        states = as_numpy_2d(data["states"], "states", path)
+    elif "observations" in data:
+        states = as_numpy_2d(data["observations"], "observations", path)
+    else:
+        keys = ", ".join(sorted(str(key) for key in data.keys()))
+        raise KeyError(f"{path}: cannot find state key {state_key!r}; available keys: {keys}")
 
+    if include_next_observations:
+        if "next_observations" not in data:
+            raise KeyError(f"{path}: --include-next-observations requires next_observations")
+        next_states = as_numpy_2d(data["next_observations"], "next_observations", path)
+        if next_states.shape[1] != states.shape[1]:
+            raise ValueError(
+                f"{path}: observations dim {states.shape[1]} != next_observations dim {next_states.shape[1]}"
+            )
+        states = np.concatenate([states, next_states], axis=0)
 
-def load_simple_teacher(model_dir: Path, device: torch.device) -> nn.Module:
-    payload = safe_torch_load(model_dir / "model.pt", map_location=device)
-    if not isinstance(payload, nn.Module):
-        raise TypeError(
-            f"Expected a saved SimpleAgent module in {model_dir / 'model.pt'}, got {type(payload)}"
-        )
-    return payload.to(device).eval()
-
-
-def reset_env(env, seed=None):
-    out = env.reset(seed=seed) if seed is not None else env.reset()
-    return out[0] if isinstance(out, tuple) else out
+    return states.astype(np.float32, copy=False)
 
 
-def step_env(env, action):
-    out = env.step(action)
-    if len(out) == 5:
-        obs, reward, terminated, truncated, info = out
-        done = bool(terminated or truncated)
-        return obs, reward, done, info
-    obs, reward, done, info = out
-    return obs, reward, bool(done), info
+def discover_dataset_files(dataset_dir: Path, tasks: Optional[Sequence[int]]) -> List[Path]:
+    candidates_dir = dataset_dir / "tasks" if (dataset_dir / "tasks").exists() else dataset_dir
+    if not candidates_dir.exists():
+        raise FileNotFoundError(f"Dataset directory does not exist: {candidates_dir}")
+
+    files = sorted(candidates_dir.glob("target_task_*.pt"))
+    if not files:
+        files = sorted(candidates_dir.glob("*.pt"))
+    if not files:
+        raise FileNotFoundError(f"No .pt dataset files found in {candidates_dir}")
+
+    if tasks is None:
+        return files
+
+    wanted = set(int(task_id) for task_id in tasks)
+    selected = []
+    for path in files:
+        payload = safe_torch_load(path, map_location="cpu")
+        task_id = infer_task_id(path, payload)
+        if task_id in wanted:
+            selected.append(path)
+
+    missing = sorted(wanted - {infer_task_id(path, safe_torch_load(path, map_location="cpu")) for path in selected})
+    if missing:
+        raise FileNotFoundError(f"Missing dataset files for task ids: {missing}")
+    return selected
 
 
-@torch.no_grad()
-def deterministic_action(model: nn.Module, obs, action_scale, action_bias, device: torch.device) -> np.ndarray:
-    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-    mean = first_output(model(obs_t))
-    action = torch.tanh(mean.squeeze(0)) * action_scale + action_bias
-    return action.cpu().numpy().astype(np.float32)
-
-
-@torch.no_grad()
-def stochastic_action(model: nn.Module, obs, action_scale, action_bias, device: torch.device) -> np.ndarray:
-    obs_t = torch.as_tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
-    mean, raw_log_std = model(obs_t)
-    log_std = torch.tanh(raw_log_std)
-    log_std = -20 + 0.5 * (2 - (-20)) * (log_std + 1)
-    normal = torch.distributions.Normal(mean, log_std.exp())
-    pre_tanh = normal.sample().squeeze(0)
-    action = torch.tanh(pre_tanh) * action_scale + action_bias
-    return action.cpu().numpy().astype(np.float32)
-
-
-def random_action(env) -> np.ndarray:
-    return np.asarray(env.action_space.sample(), dtype=np.float32).reshape(-1)
-
-
-def collect_states_for_task(
-    model_dir: Path,
-    task_id: int,
-    states_per_task: int,
-    episodes: int,
-    episode_len: int,
+def load_task_states(
+    files: Sequence[Path],
+    state_key: str,
+    include_next_observations: bool,
+    max_states_per_task: Optional[int],
     seed: int,
-    action_mode: str,
-    device: torch.device,
-) -> Tuple[np.ndarray, Dict]:
-    env = get_task(task_id)
-    model = None if action_mode == "random" else load_simple_teacher(model_dir, device=device)
+) -> Tuple[Dict[int, np.ndarray], List[Dict]]:
+    task_states: Dict[int, np.ndarray] = {}
+    task_meta: List[Dict] = []
+    rng = np.random.default_rng(seed)
 
-    action_scale = torch.as_tensor(
-        (env.action_space.high - env.action_space.low) / 2.0,
-        dtype=torch.float32,
-        device=device,
-    )
-    action_bias = torch.as_tensor(
-        (env.action_space.high + env.action_space.low) / 2.0,
-        dtype=torch.float32,
-        device=device,
-    )
-
-    states = []
-    returns = []
-    successes = []
-    lengths = []
-
-    for ep in range(episodes):
-        if len(states) >= states_per_task:
-            break
-
-        obs = reset_env(env, seed=seed + int(task_id) * 1000 + ep)
-        ep_return = 0.0
-        ep_success = 0.0
-        ep_len = 0
-
-        for step in range(episode_len):
-            if len(states) >= states_per_task:
-                break
-
-            states.append(np.asarray(obs, dtype=np.float32).reshape(-1))
-
-            if action_mode == "deterministic":
-                action = deterministic_action(
-                    model=model,
-                    obs=obs,
-                    action_scale=action_scale,
-                    action_bias=action_bias,
-                    device=device,
-                )
-            elif action_mode == "stochastic":
-                action = stochastic_action(
-                    model=model,
-                    obs=obs,
-                    action_scale=action_scale,
-                    action_bias=action_bias,
-                    device=device,
-                )
-            elif action_mode == "random":
-                action = random_action(env)
-            else:
-                raise ValueError(f"Unknown action mode: {action_mode}")
-
-            obs, reward, done, info = step_env(env, action)
-            ep_return += float(reward)
-            ep_success = max(ep_success, float(info.get("success", 0.0)))
-            ep_len = step + 1
-
-            if done:
-                break
-
-        returns.append(ep_return)
-        successes.append(ep_success)
-        lengths.append(ep_len)
-        print(
-            f"task {task_id:02d} {get_task_name(task_id)} episode {ep + 1:03d}: "
-            f"states={len(states)}/{states_per_task}, return={ep_return:.2f}, "
-            f"success={ep_success:.0f}, length={ep_len}"
+    for path in files:
+        payload = safe_torch_load(path.expanduser(), map_location="cpu")
+        task_id = infer_task_id(path, payload)
+        states = extract_states(
+            payload=payload,
+            path=path,
+            state_key=state_key,
+            include_next_observations=include_next_observations,
         )
 
-    env.close()
+        if max_states_per_task is not None and states.shape[0] > max_states_per_task:
+            indices = rng.choice(states.shape[0], size=max_states_per_task, replace=False)
+            states = states[indices]
 
-    if len(states) == 0:
-        raise RuntimeError(f"No states collected for task {task_id}.")
+        if task_id in task_states:
+            raise ValueError(f"Duplicate task id {task_id} from {path}")
+        task_states[task_id] = states
 
-    states_np = np.stack(states, axis=0).astype(np.float32)
-    meta = {
-        "task_id": int(task_id),
-        "task_name": get_task_name(task_id),
-        "model_dir": str(model_dir),
-        "num_states": int(states_np.shape[0]),
-        "episodes_used": int(len(returns)),
-        "mean_return": float(np.mean(returns)) if returns else 0.0,
-        "mean_success": float(np.mean(successes)) if successes else 0.0,
-        "mean_length": float(np.mean(lengths)) if lengths else 0.0,
-    }
-    return states_np, meta
+        meta = payload.get("meta", {}) if isinstance(payload, dict) else {}
+        task_meta.append(
+            {
+                "task_id": int(task_id),
+                "task_name": task_name(task_id),
+                "file": str(path),
+                "num_states": int(states.shape[0]),
+                "state_dim": int(states.shape[1]),
+                "source_task_id": meta.get("source_task_id"),
+                "source_model_dir": meta.get("source_model_dir"),
+                "mean_return": meta.get("mean_return"),
+                "mean_success": meta.get("mean_success"),
+            }
+        )
+        print(
+            f"loaded task {task_id:02d} {task_name(task_id)}: "
+            f"{states.shape[0]} states, dim={states.shape[1]}, file={path}"
+        )
+
+    dims = {states.shape[1] for states in task_states.values()}
+    if len(dims) != 1:
+        detail = {task_id: states.shape for task_id, states in task_states.items()}
+        raise ValueError(f"All tasks must have the same state dim, got: {detail}")
+
+    return task_states, sorted(task_meta, key=lambda item: item["task_id"])
 
 
 def normalize_task_states(task_states: Dict[int, np.ndarray]) -> Tuple[Dict[int, np.ndarray], np.ndarray, np.ndarray]:
@@ -240,8 +223,8 @@ def sliced_wasserstein_distance(
     if x.shape[1] != y.shape[1]:
         raise ValueError(f"state dim mismatch: {x.shape[1]} vs {y.shape[1]}")
 
-    n = min(x.shape[0], y.shape[0])
     rng = np.random.default_rng(seed)
+    n = min(x.shape[0], y.shape[0])
     if x.shape[0] != n:
         x = x[rng.choice(x.shape[0], size=n, replace=False)]
     if y.shape[0] != n:
@@ -274,16 +257,14 @@ def pairwise_sliced_wasserstein(
             )
             distances[i, j] = distance
             distances[j, i] = distance
-            print(
-                f"Wasserstein task {task_i:02d} vs {task_j:02d}: {distance:.6f}"
-            )
+            print(f"Wasserstein task {task_i:02d} vs {task_j:02d}: {distance:.6f}")
 
     return task_ids, distances
 
 
 def write_distance_csv(path: Path, task_ids: Sequence[int], distances: np.ndarray) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    labels = [f"{task_id}:{get_task_name(task_id)}" for task_id in task_ids]
+    labels = [f"{task_id}:{task_name(task_id)}" for task_id in task_ids]
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["task"] + labels)
@@ -294,63 +275,58 @@ def write_distance_csv(path: Path, task_ids: Sequence[int], distances: np.ndarra
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Sample states from saved simple MetaWorld teachers and compute "
-            "pairwise sliced Wasserstein distances between task state distributions."
+            "Load saved per-task .pt datasets and compute pairwise sliced "
+            "Wasserstein distances between their state distributions."
         )
     )
-    parser.add_argument("--teacher-root", type=Path, default=None)
-    parser.add_argument("--teacher-glob", default="task_*__simple__*")
-    parser.add_argument("--teacher-dirs", type=Path, nargs="*", default=None)
+    parser.add_argument(
+        "--dataset-dir",
+        type=Path,
+        default=Path("transfer_datasets/prev_policy_on_current_task"),
+        help="Directory containing task .pt files, or a parent directory with a tasks/ subdirectory.",
+    )
+    parser.add_argument(
+        "--dataset-files",
+        type=Path,
+        nargs="*",
+        default=None,
+        help="Explicit .pt files. If given, --dataset-dir discovery is skipped.",
+    )
     parser.add_argument("--tasks", type=int, nargs="*", default=None)
-    parser.add_argument("--states-per-task", type=int, default=5000)
-    parser.add_argument("--episodes", type=int, default=10)
-    parser.add_argument("--episode-len", type=int, default=500)
-    parser.add_argument("--action-mode", choices=["deterministic", "stochastic", "random"], default="deterministic")
+    parser.add_argument("--state-key", default="observations")
+    parser.add_argument("--include-next-observations", action="store_true", default=False)
+    parser.add_argument("--max-states-per-task", type=int, default=None)
     parser.add_argument("--num-projections", type=int, default=512)
     parser.add_argument("--normalize", default=True, action=argparse.BooleanOptionalAction)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
-    parser.add_argument("--output-csv", type=Path, default=Path("analysis/simple_state_wasserstein.csv"))
-    parser.add_argument("--output-pt", type=Path, default=Path("analysis/simple_state_wasserstein.pt"))
+    parser.add_argument("--output-dir", type=Path, default=Path("analysis/prev_policy_state_wasserstein"))
+    parser.add_argument("--output-name", default="wasserstein")
     parser.add_argument(
         "--save-states",
         default=False,
         action="store_true",
-        help="Also store sampled states in --output-pt. This can make the file large.",
+        help="Also store loaded states in the output .pt. This can make the file large.",
     )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    device = torch.device(args.device)
-
-    if args.teacher_dirs:
-        teacher_dirs = [path.expanduser() for path in args.teacher_dirs]
+    if args.dataset_files:
+        files = [path.expanduser() for path in args.dataset_files]
     else:
-        teacher_root = args.teacher_root.expanduser() if args.teacher_root else default_teacher_root()
-        teacher_dirs = discover_teacher_dirs(
-            teacher_root=teacher_root,
-            teacher_glob=args.teacher_glob,
-            task_ids=args.tasks,
+        files = discover_dataset_files(
+            dataset_dir=args.dataset_dir.expanduser(),
+            tasks=args.tasks,
         )
 
-    task_states: Dict[int, np.ndarray] = {}
-    task_meta = []
-    for model_dir in teacher_dirs:
-        task_id = parse_task_id(model_dir)
-        states, meta = collect_states_for_task(
-            model_dir=model_dir,
-            task_id=task_id,
-            states_per_task=args.states_per_task,
-            episodes=args.episodes,
-            episode_len=args.episode_len,
-            seed=args.seed,
-            action_mode=args.action_mode,
-            device=device,
-        )
-        task_states[task_id] = states
-        task_meta.append(meta)
+    task_states, task_meta = load_task_states(
+        files=files,
+        state_key=args.state_key,
+        include_next_observations=args.include_next_observations,
+        max_states_per_task=args.max_states_per_task,
+        seed=args.seed,
+    )
 
     obs_mean = None
     obs_std = None
@@ -364,26 +340,30 @@ def main():
         seed=args.seed,
     )
 
-    write_distance_csv(args.output_csv, task_ids, distances)
-    args.output_pt.parent.mkdir(parents=True, exist_ok=True)
+    output_dir = args.output_dir.expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_csv = output_dir / f"{args.output_name}.csv"
+    output_pt = output_dir / f"{args.output_name}.pt"
+    output_json = output_dir / f"{args.output_name}.json"
+
+    write_distance_csv(output_csv, task_ids, distances)
 
     payload = {
         "metric": "sliced_wasserstein_2",
         "task_ids": task_ids,
-        "task_names": [get_task_name(task_id) for task_id in task_ids],
+        "task_names": [task_name(task_id) for task_id in task_ids],
         "distances": torch.as_tensor(distances),
         "normalized": bool(args.normalize),
         "obs_mean": None if obs_mean is None else torch.as_tensor(obs_mean),
         "obs_std": None if obs_std is None else torch.as_tensor(obs_std),
         "meta": {
-            "teacher_dirs": [str(path) for path in teacher_dirs],
+            "dataset_files": [str(path) for path in files],
             "task_meta": task_meta,
-            "states_per_task": args.states_per_task,
-            "episodes": args.episodes,
-            "episode_len": args.episode_len,
-            "action_mode": args.action_mode,
-            "num_projections": args.num_projections,
-            "seed": args.seed,
+            "state_key": args.state_key,
+            "include_next_observations": bool(args.include_next_observations),
+            "max_states_per_task": args.max_states_per_task,
+            "num_projections": int(args.num_projections),
+            "seed": int(args.seed),
         },
     }
     if args.save_states:
@@ -391,25 +371,30 @@ def main():
             int(task_id): torch.as_tensor(states)
             for task_id, states in task_states.items()
         }
-    torch.save(payload, args.output_pt)
+    torch.save(payload, output_pt)
 
-    with args.output_pt.with_suffix(".json").open("w", encoding="utf-8") as f:
+    with output_json.open("w", encoding="utf-8") as f:
         json.dump(
             {
-                "output_csv": str(args.output_csv),
-                "output_pt": str(args.output_pt),
+                "output_csv": str(output_csv),
+                "output_pt": str(output_pt),
                 "metric": "sliced_wasserstein_2",
                 "normalized": bool(args.normalize),
+                "state_key": args.state_key,
+                "include_next_observations": bool(args.include_next_observations),
                 "task_ids": task_ids,
-                "task_names": [get_task_name(task_id) for task_id in task_ids],
+                "task_names": [task_name(task_id) for task_id in task_ids],
+                "distances": distances.tolist(),
                 "task_meta": task_meta,
             },
             f,
             indent=2,
+            sort_keys=True,
         )
 
-    print(f"\nsaved distance csv: {args.output_csv}")
-    print(f"saved distance pt:  {args.output_pt}")
+    print(f"\nsaved distance csv: {output_csv}")
+    print(f"saved distance pt:  {output_pt}")
+    print(f"saved summary json: {output_json}")
     print("distance matrix:")
     print(distances)
 

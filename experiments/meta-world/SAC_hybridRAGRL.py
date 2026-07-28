@@ -7,19 +7,21 @@ from dataclasses import dataclass
 from typing import Literal, Optional, Tuple
 import pathlib
 import os
+import json
+import re
 import tyro
 from torch.utils.tensorboard import SummaryWriter
 import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent
+from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent, AdaptiveRARLAgent
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'replace-head', 'residual-adapter', 'packnet', 'prognet', 'sdnet', 'grumlp', 'gnet', 'state-gru', 'state-gru-traj50', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', "rarl-500", "rarl-2000", "rarl-5000", "rarl-10000", 'rarl-reward', 'rarl-reward-500', 'rarl-reward-ctx', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw', 'hybrid-raw-context', 'hybrid', 'gate', 'summary-memory']
+    model_type: Literal['simple', 'finetune', 'replace-head', 'residual-adapter', 'packnet', 'prognet', 'sdnet', 'grumlp', 'gnet', 'state-gru', 'state-gru-traj50', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', "rarl-500", "rarl-2000", "rarl-2000-adaptive", "rarl-5000", "rarl-10000", 'rarl-reward', 'rarl-reward-500', 'rarl-reward-ctx', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw', 'hybrid-raw-context', 'hybrid', 'gate', 'summary-memory']
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
@@ -154,6 +156,27 @@ class Args:
 
     rarl_replace_neighbors: int = 50
     """number of nearest states considered by rarl-reward replacement"""
+
+    adaptive_warmup_steps: int = 20_000
+    """random state samples collected before rarl-2000-adaptive training; not counted in total_timesteps"""
+
+    adaptive_similarity_threshold: float = 0.7
+    """reuse a previous policy prefix when the nearest state Wasserstein distance is below this value"""
+
+    adaptive_state_num_projections: int = 512
+    """number of random projections used by rarl-2000-adaptive sliced Wasserstein"""
+
+    adaptive_state_file: str = "sampled_states.pt"
+    """filename used to save the pre-training random state sequence in each agent directory"""
+
+    adaptive_state_dir: Optional[pathlib.Path] = None
+    """optional shared state-cache directory or filename template; cached task states are reused before random sampling"""
+
+    adaptive_reuse_warmup_states: bool = True
+    """reuse an existing adaptive_state_file instead of collecting it again"""
+
+    adaptive_freeze_reused_prefix: bool = True
+    """freeze copied policy prefix layers when a similar previous task is selected"""
 
 def make_env(task_id):
     def thunk():
@@ -526,6 +549,336 @@ def soft_update_modules(source_modules, target_modules, tau):
             seen_targets.add(target_id)
 
 
+def safe_torch_load(path, map_location):
+    try:
+        return torch.load(path, map_location=map_location, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=map_location)
+
+
+def parse_task_id_from_path(path):
+    match = re.search(r"task_(\d+)__", pathlib.Path(path).name)
+    if match is None:
+        raise ValueError(f"Cannot infer task id from path: {path}")
+    return int(match.group(1))
+
+
+def reset_plain_env(env, seed=None):
+    out = env.reset(seed=seed) if seed is not None else env.reset()
+    return out[0] if isinstance(out, tuple) else out
+
+
+def step_plain_env(env, action):
+    out = env.step(action)
+    if len(out) == 5:
+        obs, reward, terminated, truncated, info = out
+        return obs, reward, bool(terminated or truncated), info
+    obs, reward, done, info = out
+    return obs, reward, bool(done), info
+
+
+def collect_random_state_sequence(task_id, num_steps, seed):
+    env = get_task(task_id)
+    obs = reset_plain_env(env, seed=seed)
+    states = []
+    episode_returns = []
+    episode_successes = []
+    ep_return = 0.0
+    ep_success = 0.0
+
+    for step in range(int(num_steps)):
+        states.append(np.asarray(obs, dtype=np.float32).reshape(-1))
+        action = np.asarray(env.action_space.sample(), dtype=np.float32).reshape(-1)
+        obs, reward, done, info = step_plain_env(env, action)
+        ep_return += float(reward)
+        ep_success = max(ep_success, float(info.get("success", 0.0)))
+
+        if done:
+            episode_returns.append(ep_return)
+            episode_successes.append(ep_success)
+            obs = reset_plain_env(env, seed=seed + step + 1)
+            ep_return = 0.0
+            ep_success = 0.0
+
+    if ep_return != 0.0 or not episode_returns:
+        episode_returns.append(ep_return)
+        episode_successes.append(ep_success)
+
+    env.close()
+    states = np.stack(states, axis=0).astype(np.float32)
+    meta = {
+        "task_id": int(task_id),
+        "num_states": int(states.shape[0]),
+        "state_dim": int(states.shape[1]),
+        "seed": int(seed),
+        "random_sampling_steps": int(num_steps),
+        "mean_random_return": float(np.mean(episode_returns)) if episode_returns else 0.0,
+        "mean_random_success": float(np.mean(episode_successes)) if episode_successes else 0.0,
+    }
+    return states, meta
+
+
+def save_state_sequence(path, states, meta):
+    os.makedirs(path.parent, exist_ok=True)
+    torch.save(
+        {
+            "states": torch.as_tensor(states, dtype=torch.float32),
+            "meta": meta,
+        },
+        path,
+    )
+
+
+def load_state_sequence(path):
+    payload = safe_torch_load(path, map_location="cpu")
+    if isinstance(payload, torch.Tensor):
+        states = payload.detach().cpu().numpy()
+        meta = {}
+    elif isinstance(payload, dict):
+        key = "states"
+        if key not in payload and "data" in payload:
+            data = payload["data"]
+            key = "states" if "states" in data else "observations"
+            states = data[key]
+        else:
+            states = payload[key]
+        meta = payload.get("meta", {})
+        states = states.detach().cpu().numpy() if isinstance(states, torch.Tensor) else np.asarray(states)
+    else:
+        raise TypeError(f"Unsupported sampled state file payload: {type(payload)}")
+
+    states = np.asarray(states, dtype=np.float32)
+    if states.ndim == 1:
+        states = states.reshape(1, -1)
+    if states.ndim != 2:
+        raise ValueError(f"Expected 2D states in {path}, got {states.shape}")
+    return states, meta
+
+
+def resolve_state_sequence_path(model_dir, task_id, state_file, state_dir=None):
+    if state_dir is None:
+        return pathlib.Path(model_dir) / state_file
+
+    state_dir_text = str(state_dir)
+    if "{task_id" in state_dir_text or "{task_id02}" in state_dir_text:
+        return pathlib.Path(
+            state_dir_text.format(
+                task_id=int(task_id),
+                task_id02=f"{int(task_id):02d}",
+            )
+        )
+
+    base = pathlib.Path(state_dir)
+    if base.suffix == ".pt":
+        return base
+
+    candidates = [
+        base / f"task_{int(task_id)}__{state_file}",
+        base / f"task_{int(task_id):02d}__{state_file}",
+        base / f"task_{int(task_id)}_states.pt",
+        base / f"task_{int(task_id):02d}_states.pt",
+        base / f"target_task_{int(task_id)}.pt",
+        base / f"target_task_{int(task_id):02d}.pt",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def ensure_state_sequence(
+    model_dir,
+    task_id,
+    state_file,
+    num_steps,
+    seed,
+    reuse_existing=True,
+    state_dir=None,
+):
+    path = resolve_state_sequence_path(
+        model_dir=model_dir,
+        task_id=task_id,
+        state_file=state_file,
+        state_dir=state_dir,
+    )
+    if reuse_existing and path.exists():
+        states, meta = load_state_sequence(path)
+        print(f"*** Reusing cached states for task {task_id}: `{path}`")
+        return states, meta, path
+
+    print(
+        f"*** Collecting {num_steps} random states for task {task_id} "
+        f"and saving to `{path}` (not counted in SAC total_timesteps)"
+    )
+    states, meta = collect_random_state_sequence(
+        task_id=task_id,
+        num_steps=num_steps,
+        seed=seed,
+    )
+    save_state_sequence(path, states, meta)
+    return states, meta, path
+
+
+def normalize_state_sets(state_sets):
+    all_states = np.concatenate(list(state_sets.values()), axis=0)
+    mean = all_states.mean(axis=0, keepdims=True)
+    std = np.maximum(all_states.std(axis=0, keepdims=True), 1e-6)
+    return {
+        key: ((states - mean) / std).astype(np.float32)
+        for key, states in state_sets.items()
+    }
+
+
+def sliced_wasserstein_distance_np(x, y, num_projections, seed):
+    if x.shape[1] != y.shape[1]:
+        raise ValueError(f"state dim mismatch: {x.shape[1]} vs {y.shape[1]}")
+    rng = np.random.default_rng(seed)
+    n = min(x.shape[0], y.shape[0])
+    if x.shape[0] != n:
+        x = x[rng.choice(x.shape[0], size=n, replace=False)]
+    if y.shape[0] != n:
+        y = y[rng.choice(y.shape[0], size=n, replace=False)]
+
+    directions = rng.normal(size=(int(num_projections), x.shape[1])).astype(np.float32)
+    directions /= np.linalg.norm(directions, axis=1, keepdims=True).clip(min=1e-8)
+    x_proj = np.sort(x @ directions.T, axis=0)
+    y_proj = np.sort(y @ directions.T, axis=0)
+    return float(np.sqrt(np.mean((x_proj - y_proj) ** 2)))
+
+
+def select_adaptive_reuse_source(
+    current_states,
+    prev_units,
+    state_file,
+    state_dir,
+    warmup_steps,
+    seed,
+    num_projections,
+    threshold,
+    reuse_existing=True,
+):
+    if len(prev_units) == 0:
+        return None, []
+
+    state_sets = {"current": current_states}
+    prev_state_info = []
+    for index, prev_dir in enumerate(prev_units):
+        prev_dir = pathlib.Path(prev_dir)
+        prev_task_id = parse_task_id_from_path(prev_dir)
+        prev_states, prev_meta, prev_state_path = ensure_state_sequence(
+            model_dir=prev_dir,
+            task_id=prev_task_id,
+            state_file=state_file,
+            num_steps=warmup_steps,
+            seed=seed + prev_task_id * 10000,
+            reuse_existing=reuse_existing,
+            state_dir=state_dir,
+        )
+        key = f"prev_{index}"
+        state_sets[key] = prev_states
+        prev_state_info.append(
+            {
+                "key": key,
+                "task_id": int(prev_task_id),
+                "model_dir": str(prev_dir),
+                "state_file": str(prev_state_path),
+                "num_states": int(prev_states.shape[0]),
+                "meta": prev_meta,
+            }
+        )
+
+    normalized_sets = normalize_state_sets(state_sets)
+    distances = []
+    for index, info in enumerate(prev_state_info):
+        distance = sliced_wasserstein_distance_np(
+            normalized_sets["current"],
+            normalized_sets[info["key"]],
+            num_projections=num_projections,
+            seed=seed + index * 1009,
+        )
+        item = {
+            "task_id": info["task_id"],
+            "model_dir": info["model_dir"],
+            "state_file": info["state_file"],
+            "distance": distance,
+            "is_similar": bool(distance < threshold),
+        }
+        distances.append(item)
+        print(
+            f"*** Adaptive state distance: current vs task {info['task_id']} "
+            f"= {distance:.6f} (threshold={threshold})"
+        )
+
+    similar = [item for item in distances if item["is_similar"]]
+    if not similar:
+        return None, distances
+    return min(similar, key=lambda item: item["distance"]), distances
+
+
+def load_pair_memory_file(path):
+    data = safe_torch_load(path, map_location="cpu")
+    memory_cls = RewardReplacingPairMemory if "rewards" in data else PairMemory
+    kwargs = {
+        "capacity": data["capacity"],
+        "obs_dim": data["obs_dim"],
+        "action_dim": data["action_dim"],
+        "device": "cpu",
+        "dtype": data.get("dtype", torch.float32),
+    }
+    if memory_cls is RewardReplacingPairMemory:
+        kwargs["replace_neighbors"] = data.get("replace_neighbors", 50)
+
+    memory = memory_cls(**kwargs)
+    memory.ptr = int(data["ptr"])
+    memory.size = int(data["size"])
+    memory.states.copy_(data["states"])
+    memory.actions.copy_(data["actions"])
+    if hasattr(memory, "rewards") and "rewards" in data:
+        memory.rewards.copy_(data["rewards"])
+        memory.num_replacements = int(data.get("num_replacements", 0))
+        memory.num_skips = int(data.get("num_skips", 0))
+    return memory
+
+
+def attach_pair_memory_if_needed(model, model_dir):
+    if not hasattr(model, "retrieve_context"):
+        return
+    if getattr(model, "memory", None) is not None:
+        return
+
+    for filename in ["reward_replacing_pair_memory.pt", "pair_memory.pt"]:
+        memory_path = pathlib.Path(model_dir) / filename
+        if memory_path.exists():
+            model.memory = load_pair_memory_file(memory_path)
+            return
+
+
+def attach_adaptive_prev_units_if_needed(model, map_location):
+    if not isinstance(model, AdaptiveRARLAgent):
+        return
+    prev_units = [
+        load_policy_unit(pathlib.Path(path), map_location=map_location)
+        for path in getattr(model, "prev_unit_paths", [])
+        if pathlib.Path(path).exists()
+    ]
+    model.set_prev_units(prev_units)
+
+
+def load_policy_unit(model_dir, map_location):
+    model_path = pathlib.Path(model_dir) / "model.pt"
+    if not model_path.exists():
+        raise FileNotFoundError(f"No model.pt found in previous unit dir: {model_dir}")
+    model = safe_torch_load(model_path, map_location=map_location)
+    if not isinstance(model, nn.Module):
+        raise TypeError(f"Expected nn.Module in {model_path}, got {type(model)}")
+    attach_pair_memory_if_needed(model, model_dir)
+    attach_adaptive_prev_units_if_needed(model, map_location=map_location)
+    model = model.to(map_location).eval()
+    for param in model.parameters():
+        param.requires_grad_(False)
+    return model
+
+
 if __name__ == '__main__':
     # envs = gym.vector.SyncVectorEnv([make_env(0)]) # The SyncVectorEnv method requires a list of function as input
     # high = envs.single_action_space.high
@@ -566,6 +919,7 @@ if __name__ == '__main__':
         "rarl",
         "rarl-500",
         "rarl-2000",
+        "rarl-2000-adaptive",
         "rarl-5000",
         "rarl-10000",
         "rarl-reward",
@@ -607,6 +961,63 @@ if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
     print(f'*** Device {device}')
+
+    adaptive_agent_dir = None
+    adaptive_current_states = None
+    adaptive_reuse_source = None
+    adaptive_distance_info = []
+    if args.model_type == "rarl-2000-adaptive":
+        if args.save_dir is None:
+            raise ValueError("rarl-2000-adaptive requires --save-dir so sampled states can be saved.")
+
+        adaptive_agent_dir = pathlib.Path(args.save_dir) / run_name
+        adaptive_current_states, adaptive_current_meta, adaptive_state_path = ensure_state_sequence(
+            model_dir=adaptive_agent_dir,
+            task_id=args.task_id,
+            state_file=args.adaptive_state_file,
+            num_steps=args.adaptive_warmup_steps,
+            seed=args.seed + args.task_id * 10000,
+            reuse_existing=args.adaptive_reuse_warmup_states,
+            state_dir=args.adaptive_state_dir,
+        )
+        adaptive_reuse_source, adaptive_distance_info = select_adaptive_reuse_source(
+            current_states=adaptive_current_states,
+            prev_units=args.prev_units,
+            state_file=args.adaptive_state_file,
+            state_dir=args.adaptive_state_dir,
+            warmup_steps=args.adaptive_warmup_steps,
+            seed=args.seed,
+            num_projections=args.adaptive_state_num_projections,
+            threshold=args.adaptive_similarity_threshold,
+            reuse_existing=args.adaptive_reuse_warmup_states,
+        )
+        adaptive_meta_path = adaptive_agent_dir / "adaptive_reuse.json"
+        adaptive_meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with adaptive_meta_path.open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "task_id": int(args.task_id),
+                    "state_file": str(adaptive_state_path),
+                    "state_dir": None if args.adaptive_state_dir is None else str(args.adaptive_state_dir),
+                    "warmup_steps": int(args.adaptive_warmup_steps),
+                    "similarity_threshold": float(args.adaptive_similarity_threshold),
+                    "num_projections": int(args.adaptive_state_num_projections),
+                    "selected_reuse_source": adaptive_reuse_source,
+                    "distances": adaptive_distance_info,
+                    "current_state_meta": adaptive_current_meta,
+                },
+                f,
+                indent=2,
+                sort_keys=True,
+            )
+        if adaptive_reuse_source is None:
+            print("*** Adaptive RARL: no previous task below threshold; policy prefix is newly initialized.")
+        else:
+            print(
+                "*** Adaptive RARL: reusing policy prefix from "
+                f"task {adaptive_reuse_source['task_id']} "
+                f"(distance={adaptive_reuse_source['distance']:.6f})."
+            )
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.task_id)])
@@ -810,6 +1221,14 @@ if __name__ == '__main__':
                     action_dim=act_dim,
                     device="cpu",
                 )
+            elif args.model_type in ["rarl-2000-adaptive"]:
+                print("*** PairMemory capacity: 2000 state-action pairs")
+                longterm_memory = PairMemory(
+                    capacity=2000,
+                    obs_dim=obs_dim,
+                    action_dim=act_dim,
+                    device="cpu",
+                )
             elif args.model_type in ["rarl-5000"]:
                 print(
                 f"*** PairMemory capacity: {args.rarl_memory_size} state-action pairs"
@@ -841,13 +1260,39 @@ if __name__ == '__main__':
                     device="cpu",
                 )
 
-        model = RARLAgent(
-            obs_dim=obs_dim,
-            act_dim=act_dim,
-            memory=longterm_memory,
-            att_dim=args.rarl_att_dim,
-            value_dim=args.rarl_value_dim,
-        ).to(device)
+        if args.model_type == "rarl-2000-adaptive":
+            prev_unit_models = [
+                load_policy_unit(pathlib.Path(path), map_location=device)
+                for path in args.prev_units
+            ]
+            model = AdaptiveRARLAgent(
+                obs_dim=obs_dim,
+                act_dim=act_dim,
+                memory=longterm_memory,
+                prev_units=prev_unit_models,
+                prev_unit_paths=args.prev_units,
+                att_dim=args.rarl_att_dim,
+                value_dim=args.rarl_value_dim,
+                prev_att_dim=args.rarl_att_dim,
+            ).to(device)
+            if adaptive_reuse_source is not None:
+                source_model = load_policy_unit(
+                    pathlib.Path(adaptive_reuse_source["model_dir"]),
+                    map_location=device,
+                )
+                model.copy_policy_prefix_from(
+                    source_model,
+                    freeze=args.adaptive_freeze_reused_prefix,
+                )
+                model.reused_policy_source = adaptive_reuse_source["model_dir"]
+        else:
+            model = RARLAgent(
+                obs_dim=obs_dim,
+                act_dim=act_dim,
+                memory=longterm_memory,
+                att_dim=args.rarl_att_dim,
+                value_dim=args.rarl_value_dim,
+            ).to(device)
 
     elif args.model_type in ['sdnet', 'sdnet-rapid', 'only-sdnet']:
         model = SingleNetAgent(
