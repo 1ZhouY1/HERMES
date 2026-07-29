@@ -15,7 +15,7 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent, AdaptiveRARLAgent
+from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent, AdaptiveRARLAgent, HybridRARLAgent, ReservoirTrajectoryMemory
 import torch.nn.functional as F
 
 
@@ -177,6 +177,55 @@ class Args:
 
     adaptive_freeze_reused_prefix: bool = True
     """freeze copied policy prefix layers when a similar previous task is selected"""
+
+    # for HybridRARL
+    hybridrarl_memory_capacity: int = 100
+    """maximum number of fixed-length trajectories kept per task"""
+
+    hybridrarl_traj_len: int = 20
+    """number of state-action pairs cached before writing one trajectory to memory"""
+
+    hybridrarl_top_r: int = 5
+    """coarse retrieval keeps the top-R trajectories"""
+
+    hybridrarl_hidden_dim: int = 128
+    """hidden dimension of the trajectory RNN and critic state feature"""
+
+    hybridrarl_att_dim: int = 128
+    """query/key attention dimension in fine retrieval"""
+
+    hybridrarl_value_dim: int = 128
+    """retrieved context dimension z_t"""
+
+    hybridrarl_policy_hidden_dim: int = 256
+    """hidden dimension of HybridRARL policy layers"""
+
+    hybridrarl_policy_layers: int = 4
+    """number of hidden Linear layers in HybridRARL policy trunk"""
+
+    hybridrarl_coarse_metric: Literal["cosine", "l2"] = "cosine"
+    """coarse retrieval metric between current state and trajectory first states"""
+
+    hybridrarl_warmup_steps: int = 20_000
+    """random states sampled before HybridRARL training; not counted in total_timesteps"""
+
+    hybridrarl_similarity_threshold: float = 0.7
+    """reuse previous HybridRARL modules when nearest state Wasserstein distance is below this value"""
+
+    hybridrarl_state_num_projections: int = 512
+    """number of random projections used by HybridRARL sliced Wasserstein"""
+
+    hybridrarl_state_file: str = "hybridrarl_sampled_states.pt"
+    """filename used to save HybridRARL pre-training random state samples"""
+
+    hybridrarl_state_dir: Optional[pathlib.Path] = None
+    """optional shared state-cache directory or filename template"""
+
+    hybridrarl_reuse_warmup_states: bool = True
+    """reuse existing HybridRARL sampled states when available"""
+
+    hybridrarl_freeze_reused_modules: bool = True
+    """freeze copied trajectory RNN and first two policy layers"""
 
 def make_env(task_id):
     def thunk():
@@ -895,8 +944,11 @@ if __name__ == '__main__':
     "ragnet-concat-only",
     ]
 
-    hybrid_types = [
+    hybridrarl_types = [
         "hybridrarl",
+    ]
+
+    hybrid_types = [
         "hybridrarl-wo-gate",
         "hybrid_add_norm",
         "hybrid-encoder",
@@ -927,7 +979,7 @@ if __name__ == '__main__':
         "rarl-reward-ctx",
     ]
 
-    memory_types = ragnet_types + hybrid_types
+    memory_types = ragnet_types + hybrid_types + hybridrarl_types
     fusion_mode_by_model_type = {
         "gate": "mixture",
         "hybrid": "residual",
@@ -966,6 +1018,10 @@ if __name__ == '__main__':
     adaptive_current_states = None
     adaptive_reuse_source = None
     adaptive_distance_info = []
+    hybridrarl_agent_dir = None
+    hybridrarl_current_states = None
+    hybridrarl_reuse_source = None
+    hybridrarl_distance_info = []
     if args.model_type == "rarl-2000-adaptive":
         if args.save_dir is None:
             raise ValueError("rarl-2000-adaptive requires --save-dir so sampled states can be saved.")
@@ -1017,6 +1073,58 @@ if __name__ == '__main__':
                 "*** Adaptive RARL: reusing policy prefix from "
                 f"task {adaptive_reuse_source['task_id']} "
                 f"(distance={adaptive_reuse_source['distance']:.6f})."
+            )
+    elif args.model_type == "hybridrarl":
+        if args.save_dir is None:
+            raise ValueError("hybridrarl requires --save-dir so sampled states and reuse metadata can be saved.")
+
+        hybridrarl_agent_dir = pathlib.Path(args.save_dir) / run_name
+        hybridrarl_current_states, hybridrarl_current_meta, hybridrarl_state_path = ensure_state_sequence(
+            model_dir=hybridrarl_agent_dir,
+            task_id=args.task_id,
+            state_file=args.hybridrarl_state_file,
+            num_steps=args.hybridrarl_warmup_steps,
+            seed=args.seed + args.task_id * 10000,
+            reuse_existing=args.hybridrarl_reuse_warmup_states,
+            state_dir=args.hybridrarl_state_dir,
+        )
+        hybridrarl_reuse_source, hybridrarl_distance_info = select_adaptive_reuse_source(
+            current_states=hybridrarl_current_states,
+            prev_units=args.prev_units,
+            state_file=args.hybridrarl_state_file,
+            state_dir=args.hybridrarl_state_dir,
+            warmup_steps=args.hybridrarl_warmup_steps,
+            seed=args.seed,
+            num_projections=args.hybridrarl_state_num_projections,
+            threshold=args.hybridrarl_similarity_threshold,
+            reuse_existing=args.hybridrarl_reuse_warmup_states,
+        )
+        hybridrarl_meta_path = hybridrarl_agent_dir / "hybridrarl_reuse.json"
+        hybridrarl_meta_path.parent.mkdir(parents=True, exist_ok=True)
+        with hybridrarl_meta_path.open("w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "task_id": int(args.task_id),
+                    "state_file": str(hybridrarl_state_path),
+                    "state_dir": None if args.hybridrarl_state_dir is None else str(args.hybridrarl_state_dir),
+                    "warmup_steps": int(args.hybridrarl_warmup_steps),
+                    "similarity_threshold": float(args.hybridrarl_similarity_threshold),
+                    "num_projections": int(args.hybridrarl_state_num_projections),
+                    "selected_reuse_source": hybridrarl_reuse_source,
+                    "distances": hybridrarl_distance_info,
+                    "current_state_meta": hybridrarl_current_meta,
+                },
+                f,
+                indent=2,
+                sort_keys=True,
+            )
+        if hybridrarl_reuse_source is None:
+            print("*** HybridRARL: no previous task below threshold; all modules are newly initialized.")
+        else:
+            print(
+                "*** HybridRARL: reusing trajectory RNN and policy prefix from "
+                f"task {hybridrarl_reuse_source['task_id']} "
+                f"(distance={hybridrarl_reuse_source['distance']:.6f})."
             )
 
     # env setup
@@ -1121,6 +1229,48 @@ if __name__ == '__main__':
             hidden_dim=256,
             top_k=10,
         ).to(device)
+
+    elif args.model_type in hybridrarl_types:
+        print(
+            f"*** HybridRARL ReservoirTrajectoryMemory capacity: "
+            f"{args.hybridrarl_memory_capacity} trajectories "
+            f"({args.hybridrarl_memory_capacity * args.hybridrarl_traj_len} transitions)"
+        )
+
+        longterm_memory = ReservoirTrajectoryMemory(
+            capacity=args.hybridrarl_memory_capacity,
+            traj_len=args.hybridrarl_traj_len,
+            obs_dim=obs_dim,
+            action_dim=act_dim,
+            reward_dim=1,
+            device="cpu",
+        )
+
+        model = HybridRARLAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            memory=longterm_memory,
+            memory_capacity=args.hybridrarl_memory_capacity,
+            traj_len=args.hybridrarl_traj_len,
+            top_r=args.hybridrarl_top_r,
+            traj_hidden_dim=args.hybridrarl_hidden_dim,
+            att_dim=args.hybridrarl_att_dim,
+            value_dim=args.hybridrarl_value_dim,
+            policy_hidden_dim=args.hybridrarl_policy_hidden_dim,
+            policy_layers=args.hybridrarl_policy_layers,
+            coarse_metric=args.hybridrarl_coarse_metric,
+        ).to(device)
+
+        if hybridrarl_reuse_source is not None:
+            source_model = load_policy_unit(
+                pathlib.Path(hybridrarl_reuse_source["model_dir"]),
+                map_location=device,
+            )
+            model.copy_transfer_modules_from(
+                source_model,
+                freeze=args.hybridrarl_freeze_reused_modules,
+            )
+            model.reused_source = hybridrarl_reuse_source["model_dir"]
 
     elif args.model_type in hybrid_types + raw_types:
         longterm_capacity = longterm_capacity_from_transition_budget(
@@ -1304,7 +1454,9 @@ if __name__ == '__main__':
     # Ignore the ProgNet and PackNet methods
 
     actor = Actor(envs, model).to(device)
-    if args.model_type in hybrid_types:
+    if args.model_type in hybridrarl_types:
+        critic_feature_dim = obs_dim
+    elif args.model_type in hybrid_types:
         critic_feature_dim = int(args.hr_state_dim)
     elif args.model_type in ["ragnet", "ragnet-wo-context", "ragnet-wo-a", "ragnet-concat-only"]:
         critic_feature_dim = actor.model.net_mean.policy_input_dim,
@@ -1402,15 +1554,20 @@ if __name__ == '__main__':
         else:
             obs_tensor = torch.Tensor(obs).to(device)
 
-            if args.model_type in hybrid_types + raw_types:
+            if args.model_type in hybridrarl_types + hybrid_types + raw_types:
                 assert len(longterm_memory) > 0, (
                     "Hybrid RAGRL starts acting after random_actions_end, but LongTermMemory is empty. "
-                    "Increase random_actions_end or decrease hr_traj_len."
+                    "Increase random_actions_end or decrease the trajectory length."
                 )
 
+                retrieve_n_traj = (
+                    args.hybridrarl_memory_capacity
+                    if args.model_type in hybridrarl_types
+                    else args.hr_n_traj
+                )
                 memory_batch = sample_ragnet_memory_batch(
                     longterm_memory=longterm_memory,
-                    n_traj=args.hr_n_traj,
+                    n_traj=retrieve_n_traj,
                     device=device,
                 )
 
@@ -1534,7 +1691,12 @@ if __name__ == '__main__':
                 state_gru_cache.clear()
 
         if args.model_type in memory_types + raw_types:
-            memory_traj_len = args.hr_traj_len if args.model_type in hybrid_types else args.ragnet_traj_len
+            if args.model_type in hybridrarl_types:
+                memory_traj_len = args.hybridrarl_traj_len
+            elif args.model_type in hybrid_types:
+                memory_traj_len = args.hr_traj_len
+            else:
+                memory_traj_len = args.ragnet_traj_len
 
             state_to_cache = np.asarray(obs[0], dtype=np.float32).reshape(-1)
             action_to_cache = np.asarray(actions[0], dtype=np.float32).reshape(-1)
@@ -1705,10 +1867,15 @@ if __name__ == '__main__':
                 data = rb.sample(args.batch_size)
             ragnet_kwargs = {}
 
-            if args.model_type in hybrid_types + raw_types:
+            if args.model_type in hybridrarl_types + hybrid_types + raw_types:
+                retrieve_n_traj = (
+                    args.hybridrarl_memory_capacity
+                    if args.model_type in hybridrarl_types
+                    else args.hr_n_traj
+                )
                 memory_batch = sample_ragnet_memory_batch(
                     longterm_memory=longterm_memory,
-                    n_traj=args.hr_n_traj,
+                    n_traj=retrieve_n_traj,
                     device=device,
                 )
                 ragnet_kwargs["memory_batch"] = memory_batch
@@ -1744,8 +1911,10 @@ if __name__ == '__main__':
                     **ragnet_kwargs,
                 )
 
-                if args.model_type in hybrid_types:
-                    # Hybrid critic input is encoded state s_{t+1}.
+                if args.model_type in hybridrarl_types:
+                    next_q_obs = data.next_observations
+                elif args.model_type in hybrid_types:
+                    # Legacy hybrid variants use their encoded state as critic input.
                     next_q_obs = actor.model.encode_state(data.next_observations)
                 elif args.model_type == "rarl-reward-ctx":
                     next_z = actor.model.retrieve_context(data.next_observations)
@@ -1778,8 +1947,10 @@ if __name__ == '__main__':
                     1 - data.dones.flatten()
                 ) * args.gamma * (min_qf_next_target).view(-1)
 
-            if args.model_type in hybrid_types:
-                # Detach encoded state during critic update.
+            if args.model_type in hybridrarl_types:
+                q_obs = data.observations
+            elif args.model_type in hybrid_types:
+                # Legacy hybrid variants use their encoded state as critic input.
                 with torch.no_grad():
                     q_obs = actor.model.encode_state(data.observations)
             elif args.model_type == "rarl-reward-ctx":
@@ -1833,8 +2004,10 @@ if __name__ == '__main__':
                         **ragnet_kwargs,
                     )
                     
-                    if args.model_type in hybrid_types:
-                        # Actor update should allow gradient to flow through encoder.
+                    if args.model_type in hybridrarl_types:
+                        q_pi_obs = data.observations
+                    elif args.model_type in hybrid_types:
+                        # Legacy hybrid variants allow gradient through their encoder.
                         q_pi_obs = actor.model.encode_state(data.observations)
                     elif args.model_type == "rarl-reward-ctx":
                         z_pi_obs = actor.model.retrieve_context(data.observations)
@@ -1914,12 +2087,13 @@ if __name__ == '__main__':
                 writer.add_scalar(
                     'losses/alpha', alpha, global_step
                 )
-                if args.model_type in hybrid_types + raw_types:
-                    writer.add_scalar(
-                        "charts/hybrid_retrieval_gate",
-                        torch.sigmoid(actor.model.net_mean.retrieval_gate).item(),
-                        global_step,
-                    )
+                if args.model_type in hybridrarl_types + hybrid_types + raw_types:
+                    if hasattr(actor.model, "net_mean") and hasattr(actor.model.net_mean, "retrieval_gate"):
+                        writer.add_scalar(
+                            "charts/hybrid_retrieval_gate",
+                            torch.sigmoid(actor.model.net_mean.retrieval_gate).item(),
+                            global_step,
+                        )
                     writer.add_scalar(
                         "charts/longterm_memory_size",
                         len(longterm_memory),

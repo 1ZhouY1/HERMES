@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import List
 
 
@@ -93,6 +94,27 @@ def parse_args():
         help="Forward memory saving to SAC_hybridRAGRL.py. Enabled by default for hybrid experiments.",
     )
     parser.add_argument(
+        "--exp-name",
+        type=str,
+        default="SAC_hybridRAGRL",
+        help="Experiment name used by SAC_hybridRAGRL.py when constructing saved model directories.",
+    )
+    parser.add_argument(
+        "--hybridrarl-state-dir",
+        type=str,
+        default="hybridrarl_state_cache",
+        help=(
+            "Shared state-cache directory for hybridrarl Wasserstein matching. "
+            "Existing task files are reused; missing task files are sampled by SAC_hybridRAGRL.py."
+        ),
+    )
+    parser.add_argument(
+        "--allow-missing-prev",
+        default=False,
+        action="store_true",
+        help="For hybridrarl, warn instead of failing when an expected previous model directory is missing.",
+    )
+    parser.add_argument(
         "--no-run",
         default=False,
         action="store_true",
@@ -117,6 +139,52 @@ def validate_task_ids(task_ids: List[int]) -> None:
         raise ValueError(f"Invalid task ids {bad_ids}. Valid range is 0..{max_task_id}.")
 
 
+def model_dir_name(task_id: int, model_type: str, exp_name: str, seed: int) -> str:
+    return f"task_{task_id}__{model_type}__{exp_name}__{seed}"
+
+
+def previous_unit_dir(save_dir: Path, task_id: int, args) -> Path:
+    return save_dir / model_dir_name(
+        task_id=task_id,
+        model_type=args.algorithm,
+        exp_name=args.exp_name,
+        seed=args.seed,
+    )
+
+
+def resolve_hybridrarl_prev_units(target_task_id: int, args) -> List[Path]:
+    save_dir = Path(args.save_dir)
+    prev_units = []
+    missing = []
+
+    for prev_task_id in range(target_task_id):
+        prev_dir = previous_unit_dir(save_dir, prev_task_id, args)
+        if args.no_run:
+            prev_units.append(prev_dir)
+            continue
+        if (prev_dir / "model.pt").exists():
+            prev_units.append(prev_dir)
+        else:
+            missing.append(prev_dir)
+
+    if missing and not args.allow_missing_prev:
+        formatted = "\n".join(f"    {path}" for path in missing)
+        raise FileNotFoundError(
+            f"Missing previous hybridrarl units for target task {target_task_id}:\n{formatted}\n"
+            "Run earlier tasks first, include them in --tasks, or pass --allow-missing-prev."
+        )
+
+    for path in missing:
+        print(f"*** Warning: missing previous hybridrarl unit: {path}")
+    return prev_units
+
+
+def normalize_extra_args(extra_args: List[str]) -> List[str]:
+    if extra_args and extra_args[0] == "--":
+        return extra_args[1:]
+    return extra_args
+
+
 def build_command(args, task_id: int) -> List[str]:
     cmd = [
         sys.executable,
@@ -125,16 +193,21 @@ def build_command(args, task_id: int) -> List[str]:
         f"--task-id={task_id}",
         f"--seed={args.seed}",
         f"--save-dir={args.save_dir}",
+        f"--exp-name={args.exp_name}",
     ]
     if args.save_every > 0:
         cmd.append(f"--save-every={args.save_every}")
     if args.save_memory:
         cmd.append("--save-memory")
 
-    extra_args = args.extra_args
-    if extra_args and extra_args[0] == "--":
-        extra_args = extra_args[1:]
-    cmd.extend(extra_args)
+    if args.algorithm == "hybridrarl":
+        cmd.append(f"--hybridrarl-state-dir={args.hybridrarl_state_dir}")
+        prev_units = resolve_hybridrarl_prev_units(task_id, args)
+        if prev_units:
+            cmd.append("--prev-units")
+            cmd.extend(str(prev_unit) for prev_unit in prev_units)
+
+    cmd.extend(normalize_extra_args(args.extra_args))
     return cmd
 
 
@@ -143,6 +216,9 @@ def format_command(cmd: List[str]) -> str:
 
 
 def launch_all(args, task_ids: List[int]) -> int:
+    if args.algorithm == "hybridrarl":
+        return launch_hybridrarl_sequential(args, task_ids)
+
     tasks = load_tasks()
     commands = [(task_id, build_command(args, task_id)) for task_id in task_ids]
 
@@ -184,6 +260,24 @@ def launch_all(args, task_ids: List[int]) -> int:
         for task_id, ret in failed:
             print(f"    task {task_id}: return code {ret}")
         return 1
+    return 0
+
+
+def launch_hybridrarl_sequential(args, task_ids: List[int]) -> int:
+    tasks = load_tasks()
+    for task_id in task_ids:
+        cmd = build_command(args, task_id)
+        print(f"[task {task_id}] {format_command(cmd)}")
+        if args.no_run:
+            continue
+
+        print(f"*** Launching hybridrarl task {task_id}: {tasks[task_id]}")
+        start = time.time()
+        ret = subprocess.call(cmd)
+        if ret != 0:
+            print(f"*** Task {task_id} failed with code {ret}.")
+            return ret
+        print(f"*** Task {task_id} finished in {(time.time() - start) / 60.0:.1f} minutes.")
     return 0
 
 
