@@ -115,6 +115,15 @@ def parse_args():
         help="For hybridrarl, warn instead of failing when an expected previous model directory is missing.",
     )
     parser.add_argument(
+        "--independent-hybridrarl",
+        default=False,
+        action="store_true",
+        help=(
+            "Run hybridrarl tasks independently and in parallel without --prev-units. "
+            "Use this for the first stage where all task-specific models are trained before manual reuse selection."
+        ),
+    )
+    parser.add_argument(
         "--no-run",
         default=False,
         action="store_true",
@@ -202,10 +211,11 @@ def build_command(args, task_id: int) -> List[str]:
 
     if args.algorithm == "hybridrarl":
         cmd.append(f"--hybridrarl-state-dir={args.hybridrarl_state_dir}")
-        prev_units = resolve_hybridrarl_prev_units(task_id, args)
-        if prev_units:
-            cmd.append("--prev-units")
-            cmd.extend(str(prev_unit) for prev_unit in prev_units)
+        if not args.independent_hybridrarl:
+            prev_units = resolve_hybridrarl_prev_units(task_id, args)
+            if prev_units:
+                cmd.append("--prev-units")
+                cmd.extend(str(prev_unit) for prev_unit in prev_units)
 
     cmd.extend(normalize_extra_args(args.extra_args))
     return cmd
@@ -216,7 +226,7 @@ def format_command(cmd: List[str]) -> str:
 
 
 def launch_all(args, task_ids: List[int]) -> int:
-    if args.algorithm == "hybridrarl":
+    if args.algorithm == "hybridrarl" and not args.independent_hybridrarl:
         return launch_hybridrarl_sequential(args, task_ids)
 
     tasks = load_tasks()
