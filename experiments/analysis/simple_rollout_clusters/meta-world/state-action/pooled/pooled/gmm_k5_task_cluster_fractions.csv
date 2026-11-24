@@ -1,0 +1,11 @@
+task_id,task_name,cluster_0,cluster_1,cluster_2,cluster_3,cluster_4
+0,hammer-v2,0.0,1.0,0.0,0.0,0.0
+1,push-wall-v2,0.0,0.0,1.0,0.0,0.0
+2,faucet-close-v2,1.0,0.0,0.0,0.0,0.0
+3,push-back-v2,0.0,0.0,0.9995,0.0005,0.0
+4,stick-pull-v2,0.0,0.0,0.0,0.0,1.0
+5,handle-press-side-v2,0.0,0.0,0.0,1.0,0.0
+6,push-v2,0.0,0.0,1.0,0.0,0.0
+7,shelf-place-v2,0.0,0.0,0.0,1.0,0.0
+8,window-close-v2,0.0,0.0,0.0,1.0,0.0
+9,peg-unplug-side-v2,1.0,0.0,0.0,0.0,0.0

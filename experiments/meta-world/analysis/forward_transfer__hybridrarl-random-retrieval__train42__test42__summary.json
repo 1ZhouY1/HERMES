@@ -1,0 +1,26 @@
+{
+  "benchmark": "meta-world",
+  "model_name": "hybridrarl-random-retrieval",
+  "baseline_name": "simple",
+  "train_seed": 42,
+  "test_seed": 42,
+  "tasks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "total_timesteps": 1000000,
+  "metric_tag": "charts/success",
+  "mean_forward_transfer": -0.0344716767755244,
+  "var_forward_transfer": 0.09787030431515656,
+  "num_valid_forward_transfer": 10,
+  "num_total_tasks_for_average": 20,
+  "num_implicit_baseline_tasks": 0
+}

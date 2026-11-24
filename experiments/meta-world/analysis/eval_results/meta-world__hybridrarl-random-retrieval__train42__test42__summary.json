@@ -1,0 +1,12 @@
+{
+  "mean_return_across_episodes": 2152.7887880880644,
+  "mean_return_across_tasks": 2152.788788088065,
+  "mean_success_across_episodes": 0.43,
+  "mean_success_across_tasks": 0.43,
+  "num_episodes": 100,
+  "num_tasks": 10,
+  "var_return_across_episodes": 4496004.059403276,
+  "var_return_across_tasks": 4447306.870067207,
+  "var_success_across_episodes": 0.24509999999999998,
+  "var_success_across_tasks": 0.22410000000000002
+}

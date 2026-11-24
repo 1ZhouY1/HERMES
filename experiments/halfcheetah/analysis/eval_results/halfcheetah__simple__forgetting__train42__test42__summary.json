@@ -1,0 +1,39 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 7504.311608745175,
+  "mean_return_across_tasks": 7504.311608745175,
+  "model_name": "simple",
+  "num_tasks": 11,
+  "scenario": "forgetting",
+  "task_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "task_names": [
+    "normal",
+    "carry_stuff",
+    "carry_stuff_hugegravity",
+    "defective_module",
+    "hugefoot",
+    "hugefoot_rainfall",
+    "inverted_actions",
+    "moon",
+    "tinyfoot",
+    "tinyfoot_moon",
+    "rainfall"
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "var_return_across_episodes": 20626808.40608537,
+  "var_return_across_tasks": 20202195.56023928
+}

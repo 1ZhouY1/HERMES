@@ -1,0 +1,5 @@
+scenario,scenario_position,task_id,task_name,train_seed,test_seed,episodes,stage_model_name,checkpoint_task_id,stage_model_dir,mean_return_P_i,reference_reward_b_i,reference_reward_source,forward_transfer_difference
+forgetting,1,4,hugefoot,42,42,10,simple,4,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/task_4__simple__run_sac__42,10919.054947755936,2209.0,supplied SAC-N reference table,8710.054947755936
+forgetting,2,7,moon,42,42,10,componet,7,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/forgetting/task_7__componet__SAC__42,854.3703920179653,2982.0,supplied SAC-N reference table,-2127.629607982035
+forgetting,3,1,carry_stuff,42,42,10,componet,1,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/forgetting/task_1__componet__SAC__42,4596.595308709946,6309.0,supplied SAC-N reference table,-1712.404691290054
+forgetting,4,10,rainfall,42,42,10,componet,10,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/forgetting/task_10__componet__SAC__42,13331.918263577314,1001.0,supplied SAC-N reference table,12330.918263577314

@@ -1,0 +1,667 @@
+{
+  "domain": "meta-world",
+  "settings": {
+    "domain": "meta-world",
+    "input_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/datasets/simple_trajectories/meta-world",
+    "output_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world",
+    "tasks": null,
+    "mode": "both",
+    "trajectory_steps": 20,
+    "hidden_dim": 128,
+    "head_dim": 64,
+    "batch_size": 32,
+    "epochs": 100,
+    "lr": 0.0003,
+    "weight_decay": 0.0,
+    "val_ratio": 0.1,
+    "test_ratio": 0.1,
+    "patience": 15,
+    "log_every": 5,
+    "seed": 42,
+    "device": "cuda",
+    "overwrite": false
+  },
+  "models": {
+    "shared": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/shared.pt",
+      "best_epoch": 70,
+      "train": {
+        "overall": {
+          "mse": 0.007715365445287898,
+          "mae": 0.026362888303399085,
+          "steps": 80000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.0009276531003415585,
+            "mae": 0.018148825109004976,
+            "steps": 8000
+          },
+          "1": {
+            "mse": 9.006275702267886e-05,
+            "mae": 0.006849601686000824,
+            "steps": 8000
+          },
+          "2": {
+            "mse": 0.001213795091956854,
+            "mae": 0.027112701177597044,
+            "steps": 8000
+          },
+          "3": {
+            "mse": 0.00029285765066742894,
+            "mae": 0.012272122412919998,
+            "steps": 8000
+          },
+          "4": {
+            "mse": 0.00034251552540808916,
+            "mae": 0.014501012027263642,
+            "steps": 8000
+          },
+          "5": {
+            "mse": 0.06562438136339188,
+            "mae": 0.0760744240283966,
+            "steps": 8000
+          },
+          "6": {
+            "mse": 0.0013225034661591053,
+            "mae": 0.02025173032283783,
+            "steps": 8000
+          },
+          "7": {
+            "mse": 0.00020497630396857858,
+            "mae": 0.011275588095188142,
+            "steps": 8000
+          },
+          "8": {
+            "mse": 0.006752918854355812,
+            "mae": 0.06179110336303711,
+            "steps": 8000
+          },
+          "9": {
+            "mse": 0.00038199033960700037,
+            "mae": 0.01535177481174469,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.003571208424028009,
+          "mae": 0.0257354197204113,
+          "steps": 10000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.0013929142653942108,
+            "mae": 0.018691516876220702,
+            "steps": 1000
+          },
+          "1": {
+            "mse": 8.880088105797768e-05,
+            "mae": 0.006749047726392746,
+            "steps": 1000
+          },
+          "2": {
+            "mse": 0.0013254364728927611,
+            "mae": 0.028186535835266112,
+            "steps": 1000
+          },
+          "3": {
+            "mse": 0.00025870377942919734,
+            "mae": 0.011982227444648743,
+            "steps": 1000
+          },
+          "4": {
+            "mse": 0.00033604545891284944,
+            "mae": 0.014507994651794434,
+            "steps": 1000
+          },
+          "5": {
+            "mse": 0.023785927534103392,
+            "mae": 0.07116136741638183,
+            "steps": 1000
+          },
+          "6": {
+            "mse": 0.0014737980961799621,
+            "mae": 0.01996522331237793,
+            "steps": 1000
+          },
+          "7": {
+            "mse": 0.00020969540532678367,
+            "mae": 0.01137851032614708,
+            "steps": 1000
+          },
+          "8": {
+            "mse": 0.006492652043700219,
+            "mae": 0.060039897680282596,
+            "steps": 1000
+          },
+          "9": {
+            "mse": 0.00034811030328273774,
+            "mae": 0.01469187593460083,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.007667428358690814,
+          "mae": 0.027885868573188782,
+          "steps": 10000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.0004783557057380676,
+            "mae": 0.015854319095611573,
+            "steps": 1000
+          },
+          "1": {
+            "mse": 0.00010127009311690927,
+            "mae": 0.007140673875808716,
+            "steps": 1000
+          },
+          "2": {
+            "mse": 0.0011683885455131531,
+            "mae": 0.026808592796325685,
+            "steps": 1000
+          },
+          "3": {
+            "mse": 0.00036026481539011004,
+            "mae": 0.012917862176895141,
+            "steps": 1000
+          },
+          "4": {
+            "mse": 0.00039274214208126067,
+            "mae": 0.015034230232238769,
+            "steps": 1000
+          },
+          "5": {
+            "mse": 0.06572255516052246,
+            "mae": 0.09046693325042725,
+            "steps": 1000
+          },
+          "6": {
+            "mse": 0.001609471619129181,
+            "mae": 0.022904521942138673,
+            "steps": 1000
+          },
+          "7": {
+            "mse": 0.00018239389546215534,
+            "mae": 0.010912249088287354,
+            "steps": 1000
+          },
+          "8": {
+            "mse": 0.006240986377000809,
+            "mae": 0.06077531123161316,
+            "steps": 1000
+          },
+          "9": {
+            "mse": 0.0004178552329540253,
+            "mae": 0.016043992042541505,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_00": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_00.pt",
+      "best_epoch": 100,
+      "train": {
+        "overall": {
+          "mse": 0.0005650966772809625,
+          "mae": 0.011471449851989746,
+          "steps": 8000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.0005650966772809625,
+            "mae": 0.011471449851989746,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.001068613439798355,
+          "mae": 0.012462434768676757,
+          "steps": 1000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.001068613439798355,
+            "mae": 0.012462434768676757,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.0002169279009103775,
+          "mae": 0.010431010961532592,
+          "steps": 1000
+        },
+        "by_task": {
+          "0": {
+            "mse": 0.0002169279009103775,
+            "mae": 0.010431010961532592,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_01": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_01.pt",
+      "best_epoch": 67,
+      "train": {
+        "overall": {
+          "mse": 1.527047806303017e-05,
+          "mae": 0.0022918676435947417,
+          "steps": 8000
+        },
+        "by_task": {
+          "1": {
+            "mse": 1.527047806303017e-05,
+            "mae": 0.0022918676435947417,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 2.9581230133771896e-05,
+          "mae": 0.0033415632247924803,
+          "steps": 1000
+        },
+        "by_task": {
+          "1": {
+            "mse": 2.9581230133771896e-05,
+            "mae": 0.0033415632247924803,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 3.353308886289596e-05,
+          "mae": 0.0034379079341888426,
+          "steps": 1000
+        },
+        "by_task": {
+          "1": {
+            "mse": 3.353308886289596e-05,
+            "mae": 0.0034379079341888426,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_02": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_02.pt",
+      "best_epoch": 99,
+      "train": {
+        "overall": {
+          "mse": 0.0008822507429867983,
+          "mae": 0.020842296540737153,
+          "steps": 8000
+        },
+        "by_task": {
+          "2": {
+            "mse": 0.0008822507429867983,
+            "mae": 0.020842296540737153,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.0009901906847953796,
+          "mae": 0.02143697738647461,
+          "steps": 1000
+        },
+        "by_task": {
+          "2": {
+            "mse": 0.0009901906847953796,
+            "mae": 0.02143697738647461,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.0006921707689762116,
+          "mae": 0.01912959861755371,
+          "steps": 1000
+        },
+        "by_task": {
+          "2": {
+            "mse": 0.0006921707689762116,
+            "mae": 0.01912959861755371,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_03": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_03.pt",
+      "best_epoch": 96,
+      "train": {
+        "overall": {
+          "mse": 1.048926198564004e-06,
+          "mae": 0.0007801142409443855,
+          "steps": 8000
+        },
+        "by_task": {
+          "3": {
+            "mse": 1.048926198564004e-06,
+            "mae": 0.0007801142409443855,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 2.5899088941514493e-06,
+          "mae": 0.001113458812236786,
+          "steps": 1000
+        },
+        "by_task": {
+          "3": {
+            "mse": 2.5899088941514493e-06,
+            "mae": 0.001113458812236786,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 2.3756511509418486e-06,
+          "mae": 0.0011240815222263337,
+          "steps": 1000
+        },
+        "by_task": {
+          "3": {
+            "mse": 2.3756511509418486e-06,
+            "mae": 0.0011240815222263337,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_04": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_04.pt",
+      "best_epoch": 100,
+      "train": {
+        "overall": {
+          "mse": 6.673832261003554e-05,
+          "mae": 0.0057369059622287754,
+          "steps": 8000
+        },
+        "by_task": {
+          "4": {
+            "mse": 6.673832261003554e-05,
+            "mae": 0.0057369059622287754,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.00011001300811767578,
+          "mae": 0.007277196884155274,
+          "steps": 1000
+        },
+        "by_task": {
+          "4": {
+            "mse": 0.00011001300811767578,
+            "mae": 0.007277196884155274,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 9.322029352188111e-05,
+          "mae": 0.006581485509872437,
+          "steps": 1000
+        },
+        "by_task": {
+          "4": {
+            "mse": 9.322029352188111e-05,
+            "mae": 0.006581485509872437,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_05": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_05.pt",
+      "best_epoch": 60,
+      "train": {
+        "overall": {
+          "mse": 0.05951030683517456,
+          "mae": 0.06551361274719238,
+          "steps": 8000
+        },
+        "by_task": {
+          "5": {
+            "mse": 0.05951030683517456,
+            "mae": 0.06551361274719238,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.013093058109283448,
+          "mae": 0.05649311351776123,
+          "steps": 1000
+        },
+        "by_task": {
+          "5": {
+            "mse": 0.013093058109283448,
+            "mae": 0.05649311351776123,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.047659399032592774,
+          "mae": 0.07819752502441406,
+          "steps": 1000
+        },
+        "by_task": {
+          "5": {
+            "mse": 0.047659399032592774,
+            "mae": 0.07819752502441406,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_06": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_06.pt",
+      "best_epoch": 100,
+      "train": {
+        "overall": {
+          "mse": 0.0002923513241112232,
+          "mae": 0.0089445641040802,
+          "steps": 8000
+        },
+        "by_task": {
+          "6": {
+            "mse": 0.0002923513241112232,
+            "mae": 0.0089445641040802,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.00048744529485702517,
+          "mae": 0.012075546741485596,
+          "steps": 1000
+        },
+        "by_task": {
+          "6": {
+            "mse": 0.00048744529485702517,
+            "mae": 0.012075546741485596,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.0007191188335418701,
+          "mae": 0.013758444309234619,
+          "steps": 1000
+        },
+        "by_task": {
+          "6": {
+            "mse": 0.0007191188335418701,
+            "mae": 0.013758444309234619,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_07": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_07.pt",
+      "best_epoch": 99,
+      "train": {
+        "overall": {
+          "mse": 8.4153446732671e-07,
+          "mae": 0.0007186449673026801,
+          "steps": 8000
+        },
+        "by_task": {
+          "7": {
+            "mse": 8.4153446732671e-07,
+            "mae": 0.0007186449673026801,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 1.6643006820231677e-06,
+          "mae": 0.0009880803525447845,
+          "steps": 1000
+        },
+        "by_task": {
+          "7": {
+            "mse": 1.6643006820231677e-06,
+            "mae": 0.0009880803525447845,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 1.7246187198907136e-06,
+          "mae": 0.0010287392735481263,
+          "steps": 1000
+        },
+        "by_task": {
+          "7": {
+            "mse": 1.7246187198907136e-06,
+            "mae": 0.0010287392735481263,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_08": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_08.pt",
+      "best_epoch": 65,
+      "train": {
+        "overall": {
+          "mse": 0.006103535309433937,
+          "mae": 0.05766323399543762,
+          "steps": 8000
+        },
+        "by_task": {
+          "8": {
+            "mse": 0.006103535309433937,
+            "mae": 0.05766323399543762,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 0.006239351511001587,
+          "mae": 0.06155482482910156,
+          "steps": 1000
+        },
+        "by_task": {
+          "8": {
+            "mse": 0.006239351511001587,
+            "mae": 0.06155482482910156,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 0.005741596460342407,
+          "mae": 0.056731891632080075,
+          "steps": 1000
+        },
+        "by_task": {
+          "8": {
+            "mse": 0.005741596460342407,
+            "mae": 0.056731891632080075,
+            "steps": 1000
+          }
+        }
+      }
+    },
+    "task_09": {
+      "checkpoint": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/analysis/simple_trajectory_encoder/meta-world/task_09.pt",
+      "best_epoch": 51,
+      "train": {
+        "overall": {
+          "mse": 7.634641020558774e-06,
+          "mae": 0.0018579627797007561,
+          "steps": 8000
+        },
+        "by_task": {
+          "9": {
+            "mse": 7.634641020558774e-06,
+            "mae": 0.0018579627797007561,
+            "steps": 8000
+          }
+        }
+      },
+      "val": {
+        "overall": {
+          "mse": 1.2316815089434385e-05,
+          "mae": 0.0023885961174964906,
+          "steps": 1000
+        },
+        "by_task": {
+          "9": {
+            "mse": 1.2316815089434385e-05,
+            "mae": 0.0023885961174964906,
+            "steps": 1000
+          }
+        }
+      },
+      "test": {
+        "overall": {
+          "mse": 1.6150097828358413e-05,
+          "mae": 0.002575977087020874,
+          "steps": 1000
+        },
+        "by_task": {
+          "9": {
+            "mse": 1.6150097828358413e-05,
+            "mae": 0.002575977087020874,
+            "steps": 1000
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,76 @@
+[
+  {
+    "episodes": 10,
+    "lengths": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000
+    ],
+    "mean_length": 1000.0,
+    "mean_return": 10708.94398080192,
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_0__hybridrarl__SAC_hybridrarl_prev_units__42",
+    "returns": [
+      10619.788694772791,
+      10648.67026522587,
+      10656.807253262607,
+      10695.955313576387,
+      10777.666022152629,
+      10805.424773712366,
+      10968.945324353439,
+      10478.062063880327,
+      10745.20082352247,
+      10692.919273560314
+    ],
+    "source_task_id": 0,
+    "source_task_name": "normal",
+    "std_return": 122.87322739935901,
+    "task_id": 0,
+    "task_name": "normal",
+    "test_seed": 42,
+    "train_seed": 42
+  },
+  {
+    "episodes": 10,
+    "lengths": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000
+    ],
+    "mean_length": 1000.0,
+    "mean_return": 11061.110877602896,
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_6__hybridrarl__SAC_hybridrarl_prev_units__42",
+    "returns": [
+      11050.58230126748,
+      11164.996115320568,
+      11009.96346050726,
+      10963.829500778254,
+      11058.88971175942,
+      11293.543517867982,
+      11071.543065334365,
+      11026.081915048591,
+      11012.94328232461,
+      10958.73590582043
+    ],
+    "source_task_id": 6,
+    "source_task_name": "inverted_actions",
+    "std_return": 95.47208742188096,
+    "task_id": 6,
+    "task_name": "inverted_actions",
+    "test_seed": 42,
+    "train_seed": 42
+  }
+]

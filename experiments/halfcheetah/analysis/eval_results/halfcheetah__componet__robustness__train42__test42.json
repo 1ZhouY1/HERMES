@@ -1,0 +1,76 @@
+[
+  {
+    "episodes": 10,
+    "lengths": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000
+    ],
+    "mean_length": 1000.0,
+    "mean_return": 10878.066844893889,
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/task_0__simple__run_sac__42",
+    "returns": [
+      4926.449387389589,
+      11442.645517432911,
+      11607.075707611675,
+      11545.010244010038,
+      11609.461864563484,
+      11477.202725679606,
+      11474.52903097426,
+      11452.59887775613,
+      11856.894048405336,
+      11388.801045115863
+    ],
+    "source_task_id": 0,
+    "source_task_name": "normal",
+    "std_return": 1987.849985531175,
+    "task_id": 0,
+    "task_name": "normal",
+    "test_seed": 42,
+    "train_seed": 42
+  },
+  {
+    "episodes": 10,
+    "lengths": [
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000,
+      1000
+    ],
+    "mean_length": 1000.0,
+    "mean_return": 12203.017918742948,
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/robustness/task_6__componet__SAC__42",
+    "returns": [
+      12430.98633362603,
+      12022.235763142031,
+      12446.991713762936,
+      12068.119198052585,
+      12038.601305045799,
+      12238.44109527315,
+      12187.347001977603,
+      12169.704675122402,
+      12332.05639623995,
+      12095.695705186989
+    ],
+    "source_task_id": 6,
+    "source_task_name": "inverted_actions",
+    "std_return": 148.38619335827096,
+    "task_id": 6,
+    "task_name": "inverted_actions",
+    "test_seed": 42,
+    "train_seed": 42
+  }
+]

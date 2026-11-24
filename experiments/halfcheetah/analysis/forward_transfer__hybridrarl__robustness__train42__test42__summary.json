@@ -1,0 +1,24 @@
+{
+  "benchmark": "halfcheetah",
+  "checkpoint_selection": "task-corresponding checkpoint at each training stage",
+  "definition": "FT = (1/T) * sum_i (P_i - b_i)",
+  "episodes_per_task": 10,
+  "forward_transfer": 5502.527429202408,
+  "metric": "mean_cumulative_episode_return",
+  "model_name": "hybridrarl",
+  "num_tasks_T": 2,
+  "reference_reward_source": "supplied SAC-N reference table",
+  "scenario": "robustness",
+  "sum_of_task_differences": 11005.054858404816,
+  "task_names": [
+    "normal",
+    "inverted_actions"
+  ],
+  "tasks": [
+    0,
+    6
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "variance_of_task_differences": 75304.44379176757
+}

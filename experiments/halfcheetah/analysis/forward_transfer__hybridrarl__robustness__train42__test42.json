@@ -1,0 +1,34 @@
+[
+  {
+    "checkpoint_task_id": 0,
+    "episodes": 10,
+    "forward_transfer_difference": 5776.94398080192,
+    "mean_return_P_i": 10708.94398080192,
+    "reference_reward_b_i": 4932.0,
+    "reference_reward_source": "supplied SAC-N reference table",
+    "scenario": "robustness",
+    "scenario_position": 1,
+    "stage_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_0__hybridrarl__SAC_hybridrarl_prev_units__42",
+    "stage_model_name": "hybridrarl",
+    "task_id": 0,
+    "task_name": "normal",
+    "test_seed": 42,
+    "train_seed": 42
+  },
+  {
+    "checkpoint_task_id": 6,
+    "episodes": 10,
+    "forward_transfer_difference": 5228.110877602896,
+    "mean_return_P_i": 11061.110877602896,
+    "reference_reward_b_i": 5833.0,
+    "reference_reward_source": "supplied SAC-N reference table",
+    "scenario": "robustness",
+    "scenario_position": 2,
+    "stage_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_6__hybridrarl__SAC_hybridrarl_prev_units__42",
+    "stage_model_name": "hybridrarl",
+    "task_id": 6,
+    "task_name": "inverted_actions",
+    "test_seed": 42,
+    "train_seed": 42
+  }
+]

@@ -1,0 +1,4 @@
+method,task_id,task_name,run_dir,return_points,success_points,max_step
+hybridrarl,0,hammer-v2,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/runs/task_0__hybridrarl__SAC_hybridRAGRL__42,2000,2000,999999
+hybridrarl-random-retrieval,0,hammer-v2,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/runs/task_0__hybridrarl-random-retrieval__SAC_hybridRAGRL__42,2000,2000,999999
+hybridrarl-random-state-retrieval,0,hammer-v2,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/runs/task_0__hybridrarl-random-state-retrieval__SAC_hybridRAGRL__42,2000,2000,999999

@@ -1,0 +1,21 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 11698.270835548394,
+  "mean_return_across_tasks": 11698.270835548392,
+  "model_name": "hybridrarl",
+  "num_tasks": 2,
+  "scenario": "robustness",
+  "task_ids": [
+    0,
+    6
+  ],
+  "task_names": [
+    "normal",
+    "inverted_actions"
+  ],
+  "test_seed": 24,
+  "train_seed": 24,
+  "var_return_across_episodes": 96759.85132038091,
+  "var_return_across_tasks": 87344.84437221897
+}

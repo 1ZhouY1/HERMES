@@ -1,0 +1,5 @@
+task_id,task_name,source_task_id,source_task_name,model_dir,episodes,train_seed,test_seed,mean_return,std_return,mean_length
+4,hugefoot,4,hugefoot,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/forgetting/task_4__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,8172.075235063845,69.15048558136382,1000.0
+7,moon,7,moon,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/forgetting/task_7__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,3362.641598008258,68.85284276753602,1000.0
+1,carry_stuff,1,carry_stuff,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/forgetting/task_1__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,4467.285301653928,9.16771194415643,1000.0
+10,rainfall,10,rainfall,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/forgetting/task_10__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,13550.072272334664,159.07091337454077,1000.0

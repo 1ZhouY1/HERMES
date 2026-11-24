@@ -1,0 +1,28 @@
+{
+  "benchmark": "halfcheetah",
+  "checkpoint_selection": "task-corresponding checkpoint at each training stage",
+  "definition": "FT = (1/T) * sum_i (P_i - b_i)",
+  "episodes_per_task": 10,
+  "forward_transfer": 1207.3535155693085,
+  "metric": "mean_cumulative_episode_return",
+  "model_name": "componet",
+  "num_tasks_T": 4,
+  "reference_reward_source": "supplied SAC-N reference table",
+  "scenario": "compositionality",
+  "sum_of_task_differences": 4829.414062277234,
+  "task_names": [
+    "tinyfoot",
+    "moon",
+    "carry_stuff_hugegravity",
+    "tinyfoot_moon"
+  ],
+  "tasks": [
+    8,
+    7,
+    2,
+    9
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "variance_of_task_differences": 9963377.44463703
+}

@@ -1,0 +1,8 @@
+{
+  "mean_success_across_episodes": 0.57,
+  "mean_success_across_tasks": 0.5700000000000001,
+  "num_episodes": 100,
+  "num_tasks": 10,
+  "var_success_across_episodes": 0.2450999999999999,
+  "var_success_across_tasks": 0.22010000000000002
+}

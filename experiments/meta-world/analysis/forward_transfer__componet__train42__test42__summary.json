@@ -1,0 +1,25 @@
+{
+  "benchmark": "meta-world",
+  "model_name": "componet",
+  "baseline_name": "simple",
+  "train_seed": 42,
+  "test_seed": 42,
+  "tasks": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "total_timesteps": 1000000,
+  "metric_tag": "charts/success",
+  "mean_forward_transfer": 0.007128818903265559,
+  "var_forward_transfer": 0.03076756461874349,
+  "num_valid_forward_transfer": 9,
+  "num_total_tasks_for_average": 20,
+  "num_implicit_baseline_tasks": 1
+}

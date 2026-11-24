@@ -1,0 +1,11 @@
+{
+  "episode_length": 500,
+  "episode_return": 2636.1262669599755,
+  "global_step": 500000,
+  "memory_capacity": 2000,
+  "memory_num_replacements": 5021,
+  "memory_num_seen": 25000,
+  "memory_size": 2000,
+  "task_id": 0,
+  "task_name": "hammer-v2"
+}

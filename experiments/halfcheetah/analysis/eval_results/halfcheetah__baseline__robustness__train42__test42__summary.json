@@ -1,0 +1,21 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 5577.2571266251925,
+  "mean_return_across_tasks": 5577.2571266251925,
+  "model_name": "baseline",
+  "num_tasks": 2,
+  "scenario": "robustness",
+  "task_ids": [
+    0,
+    6
+  ],
+  "task_names": [
+    "normal",
+    "inverted_actions"
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "var_return_across_episodes": 32052753.915570844,
+  "var_return_across_tasks": 32049199.094343647
+}

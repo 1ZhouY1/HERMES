@@ -1,0 +1,39 @@
+{
+  "mean_return_across_episodes": 932.808949162835,
+  "mean_return_across_tasks": 932.808949162835,
+  "mean_success_across_episodes": 0.2,
+  "mean_success_across_tasks": 0.2,
+  "num_episodes": 50,
+  "num_tasks": 5,
+  "skipped": [
+    {
+      "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_5__hybridrarl-ablation-no-select__all_prev_units__42",
+      "reason": "missing",
+      "task_id": 5
+    },
+    {
+      "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_6__hybridrarl-ablation-no-select__all_prev_units__42",
+      "reason": "missing",
+      "task_id": 6
+    },
+    {
+      "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_7__hybridrarl-ablation-no-select__all_prev_units__42",
+      "reason": "missing",
+      "task_id": 7
+    },
+    {
+      "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_8__hybridrarl-ablation-no-select__all_prev_units__42",
+      "reason": "missing",
+      "task_id": 8
+    },
+    {
+      "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_9__hybridrarl-ablation-no-select__all_prev_units__42",
+      "reason": "missing",
+      "task_id": 9
+    }
+  ],
+  "var_return_across_episodes": 3085391.1268964456,
+  "var_return_across_tasks": 3052061.194719716,
+  "var_success_across_episodes": 0.16000000000000003,
+  "var_success_across_tasks": 0.16000000000000006
+}

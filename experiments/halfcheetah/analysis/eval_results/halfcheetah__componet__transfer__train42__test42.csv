@@ -1,0 +1,5 @@
+task_id,task_name,source_task_id,source_task_name,model_dir,episodes,train_seed,test_seed,mean_return,std_return,mean_length
+2,carry_stuff_hugegravity,2,carry_stuff_hugegravity,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/task_2__simple__run_sac__42,10,42,42,4154.151418109584,13.366321101038583,1000.0
+7,moon,7,moon,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/transfer/task_7__componet__SAC__42,10,42,42,1343.3821440654544,357.9213792629978,1000.0
+3,defective_module,3,defective_module,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/transfer/task_3__componet__SAC__42,10,42,42,1049.0071634921708,79.50572197950294,1000.0
+5,hugefoot_rainfall,5,hugefoot_rainfall,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/transfer/task_5__componet__SAC__42,10,42,42,14487.886299105943,350.4997304960134,1000.0

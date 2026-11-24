@@ -1,0 +1,25 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 5582.535090700496,
+  "mean_return_across_tasks": 5582.535090700496,
+  "model_name": "hybridrarl",
+  "num_tasks": 4,
+  "scenario": "transfer",
+  "task_ids": [
+    2,
+    7,
+    3,
+    5
+  ],
+  "task_names": [
+    "carry_stuff_hugegravity",
+    "moon",
+    "defective_module",
+    "hugefoot_rainfall"
+  ],
+  "test_seed": 24,
+  "train_seed": 24,
+  "var_return_across_episodes": 6080535.586913094,
+  "var_return_across_tasks": 5889259.745830808
+}

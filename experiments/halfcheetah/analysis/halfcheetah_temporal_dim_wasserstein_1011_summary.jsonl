@@ -1,0 +1,731 @@
+{
+  "expected_states": 20000,
+  "metric": "temporal_dim_empirical_wasserstein_1",
+  "mode": "pairwise",
+  "nearest_neighbors": {
+    "0": [
+      {
+        "distance": 0.08656249195337296,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.08829202502965927,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.08961860835552216,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.09288810938596725,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.10327580571174622,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.10681916028261185,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.12174752354621887,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.16225777566432953,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.1826540231704712,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.4441494643688202,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "1": [
+      {
+        "distance": 0.1369892954826355,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.15721189975738525,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.15959596633911133,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.15989698469638824,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.16130919754505157,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.1826540231704712,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.19558243453502655,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.2123347520828247,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.2265317738056183,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.5507550239562988,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "2": [
+      {
+        "distance": 0.13053563237190247,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.13123230636119843,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.1369892954826355,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.16190440952777863,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.16225777566432953,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.1706325262784958,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.18144355714321136,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.18530698120594025,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.20284967124462128,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.502048134803772,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "3": [
+      {
+        "distance": 0.4441494643688202,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.4612777829170227,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.4677949845790863,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.4699498414993286,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.47922077775001526,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.4837184250354767,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.4928326904773712,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.49695760011672974,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.502048134803772,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.5507550239562988,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      }
+    ],
+    "4": [
+      {
+        "distance": 0.06070568412542343,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.09288810938596725,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.12040923535823822,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.12350344657897949,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.15425004065036774,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.15989698469638824,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.16185861825942993,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.1706325262784958,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.17100247740745544,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.4928326904773712,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "5": [
+      {
+        "distance": 0.08662071079015732,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.09348469972610474,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.10681916028261185,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.11373282223939896,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.12145433574914932,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.14935283362865448,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.16185861825942993,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.18530698120594025,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.2123347520828247,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.4677949845790863,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "6": [
+      {
+        "distance": 0.06070568412542343,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.08961860835552216,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.10774549841880798,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.1078488901257515,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.14414291083812714,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.14935283362865448,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.15721189975738525,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.16190440952777863,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.16536258161067963,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.4837184250354767,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "7": [
+      {
+        "distance": 0.041644852608442307,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.08829202502965927,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.10774549841880798,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.11360952258110046,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.12040923535823822,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.12145433574914932,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.12628337740898132,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.13123230636119843,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.16130919754505157,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.47922077775001526,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "8": [
+      {
+        "distance": 0.09348469972610474,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.10327580571174622,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.10942307859659195,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.11360952258110046,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.117709219455719,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.14414291083812714,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.15425004065036774,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.18144355714321136,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.19558243453502655,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.4612777829170227,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "9": [
+      {
+        "distance": 0.041644852608442307,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.08656249195337296,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.1078488901257515,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.10942307859659195,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.11373282223939896,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.12348204851150513,
+        "task_id": 10,
+        "task_name": "rainfall"
+      },
+      {
+        "distance": 0.12350344657897949,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.13053563237190247,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.15959596633911133,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.4699498414993286,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ],
+    "10": [
+      {
+        "distance": 0.08662071079015732,
+        "task_id": 5,
+        "task_name": "hugefoot_rainfall"
+      },
+      {
+        "distance": 0.117709219455719,
+        "task_id": 8,
+        "task_name": "tinyfoot"
+      },
+      {
+        "distance": 0.12174752354621887,
+        "task_id": 0,
+        "task_name": "normal"
+      },
+      {
+        "distance": 0.12348204851150513,
+        "task_id": 9,
+        "task_name": "tinyfoot_moon"
+      },
+      {
+        "distance": 0.12628337740898132,
+        "task_id": 7,
+        "task_name": "moon"
+      },
+      {
+        "distance": 0.16536258161067963,
+        "task_id": 6,
+        "task_name": "inverted_actions"
+      },
+      {
+        "distance": 0.17100247740745544,
+        "task_id": 4,
+        "task_name": "hugefoot"
+      },
+      {
+        "distance": 0.20284967124462128,
+        "task_id": 2,
+        "task_name": "carry_stuff_hugegravity"
+      },
+      {
+        "distance": 0.2265317738056183,
+        "task_id": 1,
+        "task_name": "carry_stuff"
+      },
+      {
+        "distance": 0.49695760011672974,
+        "task_id": 3,
+        "task_name": "defective_module"
+      }
+    ]
+  },
+  "output_csv": "analysis/halfcheetah_temporal_dim_wasserstein_1011.csv",
+  "output_pt": "analysis/halfcheetah_temporal_dim_wasserstein_1011.pt",
+  "state_key": "states",
+  "task_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "task_meta": [
+    {
+      "file": "simple_sac_20k_states_1011/task_00_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 0,
+      "task_name": "normal"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_01_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 1,
+      "task_name": "carry_stuff"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_02_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 2,
+      "task_name": "carry_stuff_hugegravity"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_03_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 3,
+      "task_name": "defective_module"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_04_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 4,
+      "task_name": "hugefoot"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_05_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 5,
+      "task_name": "hugefoot_rainfall"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_06_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 6,
+      "task_name": "inverted_actions"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_07_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 7,
+      "task_name": "moon"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_08_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 8,
+      "task_name": "tinyfoot"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_09_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 9,
+      "task_name": "tinyfoot_moon"
+    },
+    {
+      "file": "simple_sac_20k_states_1011/task_10_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        17
+      ],
+      "state_dim": 17,
+      "task_id": 10,
+      "task_name": "rainfall"
+    }
+  ],
+  "task_names": [
+    "normal",
+    "carry_stuff",
+    "carry_stuff_hugegravity",
+    "defective_module",
+    "hugefoot",
+    "hugefoot_rainfall",
+    "inverted_actions",
+    "moon",
+    "tinyfoot",
+    "tinyfoot_moon",
+    "rainfall"
+  ]
+}

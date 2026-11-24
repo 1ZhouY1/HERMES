@@ -1,0 +1,44 @@
+[
+  {
+    "base_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "eval_task_id": 4,
+    "fallback_reason": "selected_checkpoint_load_failed",
+    "load_error": "RuntimeError: Failed to load model from /home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42 | caused by: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory",
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "model_task_id": 4,
+    "selected_source": "load_failed",
+    "threshold": "0.72",
+    "threshold_exp_name": "csv_threshold_0p72",
+    "threshold_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_4__hybridrarl-prev-units__csv_threshold_0p72__42",
+    "threshold_value": 0.72,
+    "used_reusable_modules": false
+  },
+  {
+    "base_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "eval_task_id": 4,
+    "fallback_reason": "selected_checkpoint_load_failed",
+    "load_error": "RuntimeError: Failed to load model from /home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42 | caused by: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory",
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "model_task_id": 4,
+    "selected_source": "load_failed",
+    "threshold": "0.85",
+    "threshold_exp_name": "csv_threshold_0p85",
+    "threshold_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_4__hybridrarl-prev-units__csv_threshold_0p85__42",
+    "threshold_value": 0.85,
+    "used_reusable_modules": false
+  },
+  {
+    "base_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "eval_task_id": 4,
+    "fallback_reason": "selected_checkpoint_load_failed",
+    "load_error": "RuntimeError: Failed to load model from /home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42 | caused by: RuntimeError: PytorchStreamReader failed reading zip archive: failed finding central directory",
+    "model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/task_4__hybridrarl__SAC_hybridRAGRL__42",
+    "model_task_id": 4,
+    "selected_source": "load_failed",
+    "threshold": "0.90",
+    "threshold_exp_name": "csv_threshold_0p90",
+    "threshold_model_dir": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/agents/hybridrarl_prev_units/task_4__hybridrarl-prev-units__csv_threshold_0p90__42",
+    "threshold_value": 0.9,
+    "used_reusable_modules": false
+  }
+]

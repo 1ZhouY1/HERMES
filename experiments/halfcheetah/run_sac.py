@@ -14,18 +14,25 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, PackNetAgent, ProgressiveNetAgent
+from models import (
+    SingleNetAgent,
+    shared,
+    SimpleAgent,
+    CompoNetAgent,
+    PackNetAgent,
+    ProgressiveNetAgent,
+)
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'packnet', 'prognet', 'sdnet', 'sdnet-rapid'] 
+    model_type: Literal['simple', 'finetune', 'componet', 'packnet', 'prognet', 'sdnet', 'sdnet-rapid']
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
     prev_units: Tuple[pathlib.Path, ...] = ()
-    """Paths to the previous models. Not required when model_type is `simple` or `packnet` or `prognet` or `sdnet`"""
+    """Paths to previous models. CompoNet uses the first path as its simple unit."""
     exp_name: str = os.path.basename(__file__)[: -len('.py')]
     """The name of this experiment"""
     scenario: str = ""
@@ -261,6 +268,17 @@ if __name__ == '__main__':
         model = SimpleAgent.load(
             args.prev_units[0], map_location=device, reset_heads=True
         ).to(device)
+    elif args.model_type == 'componet':
+        assert len(args.prev_units) > 0, (
+            "Model type componet requires at least one previous unit; "
+            "the first previous unit must be a simple actor."
+        )
+        model = CompoNetAgent(
+            obs_dim=obs_dim,
+            act_dim=act_dim,
+            prev_paths=args.prev_units,
+            map_location=device,
+        ).to(device)
     elif args.model_type in ['sdnet', 'sdnet-rapid']:
         model = SingleNetAgent(
             obs_dim=obs_dim,
@@ -268,8 +286,7 @@ if __name__ == '__main__':
             buffer=rb,
             map_location=device,
         ).to(device)
-    # Ignore the ProgNet and PackNet methods
-
+    # Additional continual-learning model branches.
     elif args.model_type == "packnet":
         packnet_retrain_start = args.total_timesteps - int(args.total_timesteps * 0.2)
         if len(args.prev_units) == 0:

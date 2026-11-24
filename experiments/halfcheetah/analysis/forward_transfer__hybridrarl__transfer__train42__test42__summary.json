@@ -1,0 +1,28 @@
+{
+  "benchmark": "halfcheetah",
+  "checkpoint_selection": "task-corresponding checkpoint at each training stage",
+  "definition": "FT = (1/T) * sum_i (P_i - b_i)",
+  "episodes_per_task": 10,
+  "forward_transfer": 1267.2004964672883,
+  "metric": "mean_cumulative_episode_return",
+  "model_name": "hybridrarl",
+  "num_tasks_T": 4,
+  "reference_reward_source": "supplied SAC-N reference table",
+  "scenario": "transfer",
+  "sum_of_task_differences": 5068.801985869153,
+  "task_names": [
+    "carry_stuff_hugegravity",
+    "moon",
+    "defective_module",
+    "hugefoot_rainfall"
+  ],
+  "tasks": [
+    2,
+    7,
+    3,
+    5
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "variance_of_task_differences": 41703003.14433631
+}

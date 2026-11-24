@@ -1,0 +1,616 @@
+{
+  "expected_states": 20000,
+  "metric": "temporal_dim_empirical_wasserstein_1",
+  "mode": "pairwise",
+  "nearest_neighbors": {
+    "0": [
+      {
+        "distance": 0.3661147356033325,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.3848884701728821,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.39456766843795776,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.4023328721523285,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.44726401567459106,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.45504623651504517,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.4595237672328949,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.4714767634868622,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.4851795732975006,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      }
+    ],
+    "1": [
+      {
+        "distance": 0.1334221512079239,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.18783333897590637,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.21968890726566315,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.23184773325920105,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.2326725721359253,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.2471410036087036,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.26012754440307617,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.2616204023361206,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.39456766843795776,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "2": [
+      {
+        "distance": 0.17241501808166504,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.17316943407058716,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.1803339123725891,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.19455905258655548,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.2471410036087036,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.272763192653656,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.29667696356773376,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.30203405022621155,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.4595237672328949,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "3": [
+      {
+        "distance": 0.11646050959825516,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.1207207441329956,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.17241501808166504,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.18783333897590637,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.1914462000131607,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.20250357687473297,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.20369261503219604,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.24921974539756775,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.3848884701728821,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "4": [
+      {
+        "distance": 0.1914462000131607,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.2236255705356598,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.23678919672966003,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.2616204023361206,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.2995583415031433,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.30203405022621155,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.3079479932785034,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.36514535546302795,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.45504623651504517,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "5": [
+      {
+        "distance": 0.14891982078552246,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.1803339123725891,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.20369261503219604,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.21519169211387634,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.21865986287593842,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.2326725721359253,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.23496295511722565,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.3079479932785034,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.4851795732975006,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "6": [
+      {
+        "distance": 0.1207207441329956,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.1334221512079239,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.16650083661079407,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.19455905258655548,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.21865986287593842,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.2236255705356598,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.24655598402023315,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.252157986164093,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.3661147356033325,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "7": [
+      {
+        "distance": 0.11646050959825516,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.14891982078552246,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.16650083661079407,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.17316943407058716,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.21226833760738373,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.21968890726566315,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.23678919672966003,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.25176167488098145,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.4023328721523285,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "8": [
+      {
+        "distance": 0.20250357687473297,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.21226833760738373,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.23496295511722565,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.24655598402023315,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.26012754440307617,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.272763192653656,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.2995583415031433,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.30752378702163696,
+        "task_id": 9,
+        "task_name": "peg-unplug-side-v2"
+      },
+      {
+        "distance": 0.44726401567459106,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ],
+    "9": [
+      {
+        "distance": 0.21519169211387634,
+        "task_id": 5,
+        "task_name": "handle-press-side-v2"
+      },
+      {
+        "distance": 0.23184773325920105,
+        "task_id": 1,
+        "task_name": "push-wall-v2"
+      },
+      {
+        "distance": 0.24921974539756775,
+        "task_id": 3,
+        "task_name": "push-back-v2"
+      },
+      {
+        "distance": 0.25176167488098145,
+        "task_id": 7,
+        "task_name": "shelf-place-v2"
+      },
+      {
+        "distance": 0.252157986164093,
+        "task_id": 6,
+        "task_name": "push-v2"
+      },
+      {
+        "distance": 0.29667696356773376,
+        "task_id": 2,
+        "task_name": "faucet-close-v2"
+      },
+      {
+        "distance": 0.30752378702163696,
+        "task_id": 8,
+        "task_name": "window-close-v2"
+      },
+      {
+        "distance": 0.36514535546302795,
+        "task_id": 4,
+        "task_name": "stick-pull-v2"
+      },
+      {
+        "distance": 0.4714767634868622,
+        "task_id": 0,
+        "task_name": "hammer-v2"
+      }
+    ]
+  },
+  "output_csv": "analysis/temporal_dim_wasserstein.csv",
+  "output_pt": "analysis/temporal_dim_wasserstein.pt",
+  "state_key": "states",
+  "task_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "task_meta": [
+    {
+      "file": "simple_sac_20k_states/task_00_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 0,
+      "task_name": "hammer-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_01_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 1,
+      "task_name": "push-wall-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_02_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 2,
+      "task_name": "faucet-close-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_03_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 3,
+      "task_name": "push-back-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_04_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 4,
+      "task_name": "stick-pull-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_05_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 5,
+      "task_name": "handle-press-side-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_06_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 6,
+      "task_name": "push-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_07_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 7,
+      "task_name": "shelf-place-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_08_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 8,
+      "task_name": "window-close-v2"
+    },
+    {
+      "file": "simple_sac_20k_states/task_09_simple_sac_20k_states.pt",
+      "num_states": 20000,
+      "shape": [
+        20000,
+        39
+      ],
+      "state_dim": 39,
+      "task_id": 9,
+      "task_name": "peg-unplug-side-v2"
+    }
+  ],
+  "task_names": [
+    "hammer-v2",
+    "push-wall-v2",
+    "faucet-close-v2",
+    "push-back-v2",
+    "stick-pull-v2",
+    "handle-press-side-v2",
+    "push-v2",
+    "shelf-place-v2",
+    "window-close-v2",
+    "peg-unplug-side-v2"
+  ]
+}

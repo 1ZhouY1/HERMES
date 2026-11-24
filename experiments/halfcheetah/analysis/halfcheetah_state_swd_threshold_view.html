@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HalfCheetah SWD threshold viewer - halfcheetah_state_swd.csv</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: Canvas;
+      --fg: CanvasText;
+      --muted: color-mix(in srgb, CanvasText 62%, Canvas);
+      --line: color-mix(in srgb, CanvasText 18%, Canvas);
+      --soft: color-mix(in srgb, CanvasText 7%, Canvas);
+      --green: #20a464;
+      --green-soft: color-mix(in srgb, #20a464 22%, Canvas);
+      --green-strong: color-mix(in srgb, #20a464 72%, CanvasText);
+      --blue-soft: color-mix(in srgb, #4a7dff 16%, Canvas);
+      --orange-soft: color-mix(in srgb, #d9822b 22%, Canvas);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+    }
+    main {
+      max-width: 1320px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 23px;
+      font-weight: 700;
+    }
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: end;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 16px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    input[type="number"] {
+      width: 150px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+    }
+    input[type="range"] {
+      width: min(520px, 78vw);
+    }
+    .summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 150px;
+      background: var(--soft);
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stat strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      vertical-align: -2px;
+      margin-right: 5px;
+    }
+    .swatch.green { background: var(--green-soft); border-color: var(--green); }
+    .swatch.gray { background: var(--soft); }
+    .section {
+      margin-top: 22px;
+    }
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .scenario-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .scenario-header {
+      padding: 12px 14px;
+      background: var(--soft);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }
+    .scenario-header h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+    .scenario-header span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .stage-list {
+      display: grid;
+      gap: 0;
+    }
+    .stage {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .stage:last-child { border-bottom: 0; }
+    .stage-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .stage-title strong {
+      font-weight: 700;
+    }
+    .module-tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .module-tag.reuse {
+      color: var(--green-strong);
+      background: var(--green-soft);
+      border-color: color-mix(in srgb, var(--green) 55%, var(--line));
+      font-weight: 700;
+    }
+    .module-tag.base {
+      background: var(--blue-soft);
+    }
+    .reuse-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .reuse-item {
+      border: 1px solid color-mix(in srgb, var(--green) 58%, var(--line));
+      border-left: 5px solid var(--green);
+      border-radius: 10px;
+      padding: 8px 9px;
+      background: var(--green-soft);
+      min-width: min(100%, 220px);
+    }
+    .reuse-item strong {
+      display: block;
+      font-size: 13px;
+    }
+    .reuse-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+    .no-reuse {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 880px;
+      font-size: 13px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      padding: 7px 8px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+      background: var(--soft);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: var(--bg);
+    }
+    th:first-child { background: var(--soft); z-index: 3; }
+    td.future {
+      color: color-mix(in srgb, var(--muted) 45%, transparent);
+      background: repeating-linear-gradient(-45deg, transparent, transparent 6px, var(--soft) 6px, var(--soft) 12px);
+    }
+    td.diag {
+      color: var(--muted);
+      background: var(--soft);
+      text-align: center;
+    }
+    td.hit {
+      background: var(--green-soft);
+      color: var(--green-strong);
+      font-weight: 700;
+    }
+    td.near {
+      background: var(--orange-soft);
+    }
+    .source {
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    @media (max-width: 980px) {
+      body { padding: 16px; }
+      .scenario-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>HalfCheetah Sliced Wasserstein 阈值复用可视化</h1>
+    <p>滑动阈值 ε：绿色表示当前任务会复用对应历史模块；每个场景只按该场景的 unique task 顺序考虑已经训练过的前序任务。</p>
+
+    <section class="controls" aria-label="threshold controls">
+      <label>
+        阈值 ε
+        <input id="thresholdInput" type="number" min="0" step="0.0001">
+      </label>
+      <label>
+        调整阈值
+        <input id="thresholdRange" type="range" min="0" step="0.0001">
+      </label>
+    </section>
+
+    <section class="summary" aria-live="polite">
+      <div class="stat"><span>全局低于阈值的历史对</span><strong id="globalPairs">0</strong></div>
+      <div class="stat"><span>场景内复用次数</span><strong id="scenarioReuseCount">0</strong></div>
+      <div class="stat"><span>复用到的模块数</span><strong id="moduleCount">0</strong></div>
+      <div class="stat"><span>最小距离</span><strong id="minDistance">-</strong></div>
+    </section>
+
+    <div class="legend">
+      <span><i class="swatch green"></i>复用模块 / distance &lt; ε</span>
+      <span><i class="swatch gray"></i>不复用 / base HybridRARL</span>
+    </div>
+
+    <section class="section">
+      <h2>场景级模块复用结果</h2>
+      <div id="scenarioGrid" class="scenario-grid"></div>
+    </section>
+
+    <section class="section">
+      <h2>全局下三角距离矩阵</h2>
+      <div class="table-wrap">
+        <table id="matrixTable" aria-label="lower triangular HalfCheetah SWD matrix"></table>
+      </div>
+    </section>
+
+    <p class="source">CSV: <span id="csvPath"></span></p>
+  </main>
+
+  <script>
+    const DATA = {"csvPath": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/analysis/halfcheetah_state_swd.csv", "tasks": [{"id": 0, "name": "normal", "label": "task_0:normal", "display": "task 0: normal"}, {"id": 1, "name": "carry_stuff", "label": "task_1:carry_stuff", "display": "task 1: carry_stuff"}, {"id": 2, "name": "carry_stuff_hugegravity", "label": "task_2:carry_stuff_hugegravity", "display": "task 2: carry_stuff_hugegravity"}, {"id": 3, "name": "defective_module", "label": "task_3:defective_module", "display": "task 3: defective_module"}, {"id": 4, "name": "hugefoot", "label": "task_4:hugefoot", "display": "task 4: hugefoot"}, {"id": 5, "name": "hugefoot_rainfall", "label": "task_5:hugefoot_rainfall", "display": "task 5: hugefoot_rainfall"}, {"id": 6, "name": "inverted_actions", "label": "task_6:inverted_actions", "display": "task 6: inverted_actions"}, {"id": 7, "name": "moon", "label": "task_7:moon", "display": "task 7: moon"}, {"id": 8, "name": "tinyfoot", "label": "task_8:tinyfoot", "display": "task 8: tinyfoot"}, {"id": 9, "name": "tinyfoot_moon", "label": "task_9:tinyfoot_moon", "display": "task 9: tinyfoot_moon"}, {"id": 10, "name": "rainfall", "label": "task_10:rainfall", "display": "task 10: rainfall"}], "matrix": [[0.0, 0.4008499468, 0.5777582226, 0.5755713691, 0.1295138869, 0.3643301626, 0.1574336351, 0.2721261674, 0.147228168, 0.341719654, 0.3971902006], [0.4008499468, 0.0, 0.3304161686, 0.7293055671, 0.4435367488, 0.5859387472, 0.3821619775, 0.450065392, 0.3965995885, 0.5308218755, 0.5853234855], [0.5777582226, 0.3304161686, 0.0, 0.8944731742, 0.603422662, 0.6897206439, 0.5409074412, 0.6471356201, 0.5631628188, 0.6883637137, 0.6868658123], [0.5755713691, 0.7293055671, 0.8944731742, 0.0, 0.5704058016, 0.785127706, 0.5988743381, 0.503762904, 0.5851370259, 0.6757965376, 0.8117943194], [0.1295138869, 0.4435367488, 0.603422662, 0.5704058016, 0.0, 0.3371273691, 0.1672645897, 0.2898998097, 0.1445830765, 0.3466688677, 0.3615874881], [0.3643301626, 0.5859387472, 0.6897206439, 0.785127706, 0.3371273691, 0.0, 0.3736637268, 0.5396789112, 0.3656781491, 0.5038845187, 0.2204378231], [0.1574336351, 0.3821619775, 0.5409074412, 0.5988743381, 0.1672645897, 0.3736637268, 0.0, 0.3133385076, 0.1322619358, 0.3585009712, 0.3836927188], [0.2721261674, 0.450065392, 0.6471356201, 0.503762904, 0.2898998097, 0.5396789112, 0.3133385076, 0.0, 0.3112939823, 0.2603584734, 0.5753920059], [0.147228168, 0.3965995885, 0.5631628188, 0.5851370259, 0.1445830765, 0.3656781491, 0.1322619358, 0.3112939823, 0.0, 0.3612494358, 0.3701058453], [0.341719654, 0.5308218755, 0.6883637137, 0.6757965376, 0.3466688677, 0.5038845187, 0.3585009712, 0.2603584734, 0.3612494358, 0.0, 0.5390290785], [0.3971902006, 0.5853234855, 0.6868658123, 0.8117943194, 0.3615874881, 0.2204378231, 0.3836927188, 0.5753920059, 0.3701058453, 0.5390290785, 0.0]], "scenarios": {"forgetting": [{"task_id": 4, "task_name": "hugefoot"}, {"task_id": 7, "task_name": "moon"}, {"task_id": 1, "task_name": "carry_stuff"}, {"task_id": 10, "task_name": "rainfall"}], "transfer": [{"task_id": 2, "task_name": "carry_stuff_hugegravity"}, {"task_id": 7, "task_name": "moon"}, {"task_id": 3, "task_name": "defective_module"}, {"task_id": 5, "task_name": "hugefoot_rainfall"}], "robustness": [{"task_id": 0, "task_name": "normal"}, {"task_id": 6, "task_name": "inverted_actions"}], "compositionality": [{"task_id": 8, "task_name": "tinyfoot"}, {"task_id": 7, "task_name": "moon"}, {"task_id": 2, "task_name": "carry_stuff_hugegravity"}, {"task_id": 9, "task_name": "tinyfoot_moon"}]}, "defaultThreshold": 0.11, "expName": "SAC_hybridrarl_prev_units", "seed": 42, "maxDistance": 0.8944731742, "minDistance": 0.1295138869};
+    const tasks = DATA.tasks;
+    const matrix = DATA.matrix;
+    const scenarios = DATA.scenarios;
+    const input = document.getElementById("thresholdInput");
+    const range = document.getElementById("thresholdRange");
+    const scenarioGrid = document.getElementById("scenarioGrid");
+    const table = document.getElementById("matrixTable");
+    const csvPath = document.getElementById("csvPath");
+    const globalPairs = document.getElementById("globalPairs");
+    const scenarioReuseCount = document.getElementById("scenarioReuseCount");
+    const moduleCount = document.getElementById("moduleCount");
+    const minDistance = document.getElementById("minDistance");
+
+    csvPath.textContent = DATA.csvPath;
+    range.max = String(Math.max(DATA.maxDistance, DATA.defaultThreshold, 1e-6));
+    input.value = Number(DATA.defaultThreshold).toFixed(4);
+    range.value = input.value;
+
+    const indexByTaskId = new Map(tasks.map((task, index) => [Number(task.id), index]));
+
+    function taskDisplayByMatrixIndex(index) {
+      const task = tasks[index];
+      return task?.display || task?.label || `task ${index}`;
+    }
+
+    function fmt(value) {
+      return Number(value).toFixed(6);
+    }
+
+    function getDistance(taskIdA, taskIdB) {
+      const i = indexByTaskId.get(Number(taskIdA));
+      const j = indexByTaskId.get(Number(taskIdB));
+      if (i === undefined || j === undefined) return null;
+      return Number(matrix[i][j]);
+    }
+
+    function modelDirName(taskId, modelType) {
+      return `task_${taskId}__${modelType}__${DATA.expName}__${DATA.seed}`;
+    }
+
+    function globalSelectedPairs(threshold) {
+      let count = 0;
+      for (let row = 0; row < matrix.length; row += 1) {
+        for (let col = 0; col < row; col += 1) {
+          if (Number(matrix[row][col]) < threshold) count += 1;
+        }
+      }
+      return count;
+    }
+
+    function simulateScenario(sequence, threshold) {
+      const produced = new Map();
+      const stages = [];
+      for (let pos = 0; pos < sequence.length; pos += 1) {
+        const current = sequence[pos];
+        const selected = [];
+        for (let prevPos = 0; prevPos < pos; prevPos += 1) {
+          const prev = sequence[prevPos];
+          const distance = getDistance(current.task_id, prev.task_id);
+          if (distance !== null && distance < threshold) {
+            const module = produced.get(prev.task_id);
+            selected.push({
+              task_id: prev.task_id,
+              task_name: prev.task_name,
+              distance,
+              module_type: module?.model_type || "hybridrarl",
+              module_name: module?.module_name || modelDirName(prev.task_id, "hybridrarl"),
+            });
+          }
+        }
+        selected.sort((a, b) => a.distance - b.distance);
+        const modelType = selected.length > 0 ? "hybridrarl-prev-units" : "hybridrarl";
+        const moduleName = modelDirName(current.task_id, modelType);
+        produced.set(current.task_id, {
+          task_id: current.task_id,
+          task_name: current.task_name,
+          model_type: modelType,
+          module_name: moduleName,
+        });
+        stages.push({
+          position: pos + 1,
+          task_id: current.task_id,
+          task_name: current.task_name,
+          selected,
+          model_type: modelType,
+          module_name: moduleName,
+        });
+      }
+      return stages;
+    }
+
+    function renderScenarios(threshold) {
+      scenarioGrid.innerHTML = "";
+      let reuseEvents = 0;
+      const reusedModules = new Set();
+
+      for (const [scenarioName, sequence] of Object.entries(scenarios)) {
+        const stages = simulateScenario(sequence, threshold);
+        const card = document.createElement("article");
+        card.className = "scenario-card";
+
+        const selectedCount = stages.reduce((sum, stage) => sum + stage.selected.length, 0);
+        reuseEvents += selectedCount;
+        for (const stage of stages) {
+          for (const item of stage.selected) reusedModules.add(`${scenarioName}::${item.module_name}`);
+        }
+
+        const header = document.createElement("div");
+        header.className = "scenario-header";
+        const h3 = document.createElement("h3");
+        h3.textContent = scenarioName;
+        const summary = document.createElement("span");
+        summary.textContent = `${selectedCount} reused links / ${stages.length} stages`;
+        header.append(h3, summary);
+        card.appendChild(header);
+
+        const list = document.createElement("div");
+        list.className = "stage-list";
+        for (const stage of stages) {
+          const item = document.createElement("section");
+          item.className = "stage";
+
+          const title = document.createElement("div");
+          title.className = "stage-title";
+          const name = document.createElement("strong");
+          name.textContent = `${stage.position}. task ${stage.task_id}: ${stage.task_name}`;
+          const tag = document.createElement("span");
+          tag.className = `module-tag ${stage.selected.length ? "reuse" : "base"}`;
+          tag.textContent = stage.selected.length ? "train prev-units module" : "train base module";
+          title.append(name, tag);
+          item.appendChild(title);
+
+          const module = document.createElement("span");
+          module.className = "module-tag";
+          module.textContent = `produces: ${stage.module_name}`;
+          item.appendChild(module);
+
+          if (stage.selected.length === 0) {
+            const noReuse = document.createElement("p");
+            noReuse.className = "no-reuse";
+            noReuse.textContent = "不复用前序模块。";
+            item.appendChild(noReuse);
+          } else {
+            const reuseList = document.createElement("div");
+            reuseList.className = "reuse-list";
+            for (const selected of stage.selected) {
+              const reuse = document.createElement("div");
+              reuse.className = "reuse-item";
+              const strong = document.createElement("strong");
+              strong.textContent = `reuse task ${selected.task_id}: ${selected.task_name}`;
+              const dist = document.createElement("span");
+              dist.textContent = `distance=${fmt(selected.distance)}; module=${selected.module_name}`;
+              reuse.append(strong, dist);
+              reuseList.appendChild(reuse);
+            }
+            item.appendChild(reuseList);
+          }
+
+          list.appendChild(item);
+        }
+        card.appendChild(list);
+        scenarioGrid.appendChild(card);
+      }
+
+      scenarioReuseCount.textContent = String(reuseEvents);
+      moduleCount.textContent = String(reusedModules.size);
+    }
+
+    function renderMatrix(threshold) {
+      table.innerHTML = "";
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      const corner = document.createElement("th");
+      corner.textContent = "current \\ previous";
+      headRow.appendChild(corner);
+      tasks.forEach((task, index) => {
+        const th = document.createElement("th");
+        th.textContent = `T${task.id ?? index}`;
+        th.title = task.display || task.label;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      for (let row = 0; row < matrix.length; row += 1) {
+        const tr = document.createElement("tr");
+        const rowHead = document.createElement("td");
+        rowHead.textContent = taskDisplayByMatrixIndex(row);
+        tr.appendChild(rowHead);
+
+        for (let col = 0; col < matrix[row].length; col += 1) {
+          const td = document.createElement("td");
+          if (col > row) {
+            td.className = "future";
+            td.textContent = "—";
+          } else if (col === row) {
+            td.className = "diag";
+            td.textContent = "self";
+          } else {
+            const value = Number(matrix[row][col]);
+            td.textContent = fmt(value);
+            td.title = `${taskDisplayByMatrixIndex(row)} vs ${taskDisplayByMatrixIndex(col)}`;
+            if (value < threshold) td.className = "hit";
+            else if (value < threshold * 1.15) td.className = "near";
+          }
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+    }
+
+    function update() {
+      const threshold = Number(input.value);
+      range.value = input.value;
+      globalPairs.textContent = String(globalSelectedPairs(threshold));
+      minDistance.textContent = fmt(DATA.minDistance);
+      renderScenarios(threshold);
+      renderMatrix(threshold);
+    }
+
+    input.addEventListener("input", update);
+    range.addEventListener("input", () => {
+      input.value = Number(range.value).toFixed(4);
+      update();
+    });
+    update();
+  </script>
+</body>
+</html>

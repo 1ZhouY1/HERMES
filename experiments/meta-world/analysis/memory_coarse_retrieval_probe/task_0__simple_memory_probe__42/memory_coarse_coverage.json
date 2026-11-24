@@ -1,0 +1,167 @@
+[
+  {
+    "coverage": 1.0,
+    "covered_steps": 500,
+    "episode_length": 500,
+    "epsilon": 0.5,
+    "global_step": 100000,
+    "max_min_distance": 0.004402339458465576,
+    "mean_min_distance": 0.0033466944005340338,
+    "median_min_distance": 0.0038899779319763184,
+    "memory_size": 2000,
+    "metric": "cosine",
+    "snapshot": "snapshot_100000",
+    "topk": {
+      "1": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 1,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0033466944005340338,
+        "mean_topk_distance": 0.0033466944005340338
+      },
+      "5": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 5,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.004568650387227535,
+        "mean_topk_distance": 0.004065457731485367
+      },
+      "10": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 10,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.005405209492892027,
+        "mean_topk_distance": 0.004574208986014128
+      },
+      "50": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 50,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.010706706903874874,
+        "mean_topk_distance": 0.0074719013646245
+      },
+      "100": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 100,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.016403988003730774,
+        "mean_topk_distance": 0.010634420439600945
+      }
+    }
+  },
+  {
+    "coverage": 1.0,
+    "covered_steps": 500,
+    "episode_length": 500,
+    "epsilon": 0.5,
+    "global_step": 500000,
+    "max_min_distance": 0.001113593578338623,
+    "mean_min_distance": 0.00013862109335605055,
+    "median_min_distance": 0.00011652708053588867,
+    "memory_size": 2000,
+    "metric": "cosine",
+    "snapshot": "snapshot_500000",
+    "topk": {
+      "1": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 1,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.00013862109335605055,
+        "mean_topk_distance": 0.00013862109335605055
+      },
+      "5": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 5,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.00020786869572475553,
+        "mean_topk_distance": 0.0001779186277417466
+      },
+      "10": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 10,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0002535687817726284,
+        "mean_topk_distance": 0.0002080248377751559
+      },
+      "50": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 50,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0004531170125119388,
+        "mean_topk_distance": 0.00033989184885285795
+      },
+      "100": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 100,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0006321200053207576,
+        "mean_topk_distance": 0.0004376257711555809
+      }
+    }
+  },
+  {
+    "coverage": 1.0,
+    "covered_steps": 500,
+    "episode_length": 500,
+    "epsilon": 0.5,
+    "global_step": 900000,
+    "max_min_distance": 0.0007833242416381836,
+    "mean_min_distance": 6.091165414545685e-05,
+    "median_min_distance": 3.272294998168945e-05,
+    "memory_size": 2000,
+    "metric": "cosine",
+    "snapshot": "snapshot_900000",
+    "topk": {
+      "1": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 1,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 6.091165414545685e-05,
+        "mean_topk_distance": 6.091165414545685e-05
+      },
+      "5": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 5,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.00013005005894228816,
+        "mean_topk_distance": 0.00010069861309602857
+      },
+      "10": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 10,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.00017492330516688526,
+        "mean_topk_distance": 0.00012931441597174853
+      },
+      "50": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 50,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0003815731906797737,
+        "mean_topk_distance": 0.0002606090856716037
+      },
+      "100": {
+        "coverage_all": 1.0,
+        "coverage_any": 1.0,
+        "effective_k": 100,
+        "kth_coverage": 1.0,
+        "mean_kth_distance": 0.0005921798874624074,
+        "mean_topk_distance": 0.00037556744064204395
+      }
+    }
+  }
+]

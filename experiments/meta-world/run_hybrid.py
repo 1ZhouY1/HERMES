@@ -10,6 +10,8 @@ from typing import List
 
 HYBRID_ALGORITHMS = [
     "hybridrarl",
+    "hybridrarl-random-retrieval",
+    "hybridrarl-random-state-retrieval",
     "hybridrarl-wo-gate",
     "hybrid_add_norm",
     "hybrid-encoder",
@@ -21,13 +23,19 @@ HYBRID_ALGORITHMS = [
     "gate",
 ]
 
+NO_PREV_UNIT_ALGORITHMS = {
+    "hybridrarl-random-retrieval",
+    "hybridrarl-random-state-retrieval",
+}
+
 
 def load_tasks() -> List[str]:
     """
     Read the task list without importing tasks.py, so this launcher can print
     dry-run commands even before the Meta-World environment is activated.
     """
-    with open("tasks.py", "r", encoding="utf-8") as f:
+    task_file = Path(__file__).with_name("tasks.py")
+    with task_file.open("r", encoding="utf-8") as f:
         tree = ast.parse(f.read(), filename="tasks.py")
 
     single_tasks = None
@@ -49,8 +57,9 @@ def load_single_tasks() -> List[str]:
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Launch independent Hybrid RAGRL Meta-World tasks in parallel. "
-            "Each task owns its own LongTermMemory."
+            "Launch Hybrid RAGRL Meta-World tasks. Ablations that do not use "
+            "prev-units, such as hybridrarl-random-state-retrieval, are run "
+            "independently and can be launched in parallel."
         )
     )
 
@@ -109,6 +118,19 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--hybridrarl-pretrained-mode",
+        choices=("none", "shared", "per-task"),
+        default="none",
+        help="Use a frozen pretrained trajectory encoder for hybridrarl.",
+    )
+    parser.add_argument(
+        "--hybridrarl-pretrained-dir",
+        type=Path,
+        default=Path(__file__).resolve().parents[1] / "analysis" /
+        "simple_trajectory_encoder" / "meta-world",
+        help="Directory containing shared.pt and task_<id>.pt checkpoints.",
+    )
+    parser.add_argument(
         "--allow-missing-prev",
         default=False,
         action="store_true",
@@ -120,7 +142,9 @@ def parse_args():
         action="store_true",
         help=(
             "Run hybridrarl tasks independently and in parallel without --prev-units. "
-            "Use this for the first stage where all task-specific models are trained before manual reuse selection."
+            "Use this for the first stage where all task-specific models are "
+            "trained before manual reuse selection. No-prev-unit ablations "
+            "such as hybridrarl-random-state-retrieval already behave this way."
         ),
     )
     parser.add_argument(
@@ -137,7 +161,10 @@ def parse_args():
             "Put them after '--', for example: -- --total-timesteps 100000"
         ),
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.hybridrarl_pretrained_mode != "none" and args.algorithm != "hybridrarl":
+        parser.error("--hybridrarl-pretrained-mode requires --algorithm hybridrarl")
+    return args
 
 
 def validate_task_ids(task_ids: List[int]) -> None:
@@ -153,10 +180,14 @@ def model_dir_name(task_id: int, model_type: str, exp_name: str, seed: int) -> s
 
 
 def previous_unit_dir(save_dir: Path, task_id: int, args) -> Path:
+    encoder_suffix = ("" if args.hybridrarl_pretrained_mode == "none" else
+                      f"_encoder_{args.hybridrarl_pretrained_mode.replace('-', '_')}")
+    if encoder_suffix and args.independent_hybridrarl:
+        encoder_suffix += "_independent"
     return save_dir / model_dir_name(
         task_id=task_id,
         model_type=args.algorithm,
-        exp_name=args.exp_name,
+        exp_name=args.exp_name + encoder_suffix,
         seed=args.seed,
     )
 
@@ -197,7 +228,7 @@ def normalize_extra_args(extra_args: List[str]) -> List[str]:
 def build_command(args, task_id: int) -> List[str]:
     cmd = [
         sys.executable,
-        "SAC_hybridRAGRL.py",
+        str(Path(__file__).with_name("SAC_hybridRAGRL.py")),
         f"--model-type={args.algorithm}",
         f"--task-id={task_id}",
         f"--seed={args.seed}",
@@ -210,7 +241,13 @@ def build_command(args, task_id: int) -> List[str]:
         cmd.append("--save-memory")
 
     if args.algorithm == "hybridrarl":
-        cmd.append(f"--hybridrarl-state-dir={args.hybridrarl_state_dir}")
+        if args.independent_hybridrarl:
+            cmd.append("--hybridrarl-independent")
+        else:
+            cmd.append(f"--hybridrarl-state-dir={args.hybridrarl_state_dir}")
+        if args.hybridrarl_pretrained_mode != "none":
+            cmd.append(f"--hybridrarl-pretrained-mode={args.hybridrarl_pretrained_mode}")
+            cmd.append(f"--hybridrarl-pretrained-dir={args.hybridrarl_pretrained_dir}")
         if not args.independent_hybridrarl:
             prev_units = resolve_hybridrarl_prev_units(task_id, args)
             if prev_units:
@@ -230,10 +267,18 @@ def launch_all(args, task_ids: List[int]) -> int:
         return launch_hybridrarl_sequential(args, task_ids)
 
     tasks = load_tasks()
+    if args.algorithm in NO_PREV_UNIT_ALGORITHMS:
+        print(
+            f"*** {args.algorithm}: no prev-units are used; selected tasks "
+            f"will run independently with max_parallel={args.max_parallel}."
+        )
     commands = [(task_id, build_command(args, task_id)) for task_id in task_ids]
 
     for task_id, cmd in commands:
         print(f"[task {task_id}] {format_command(cmd)}")
+        if args.algorithm == "hybridrarl" and args.hybridrarl_pretrained_mode != "none":
+            print(f"[task {task_id}] model directory: "
+                  f"{previous_unit_dir(Path(args.save_dir), task_id, args)}")
 
     if args.no_run:
         return 0
@@ -295,4 +340,19 @@ if __name__ == "__main__":
     args = parse_args()
     task_ids = args.tasks if args.tasks is not None else list(range(len(load_single_tasks())))
     validate_task_ids(task_ids)
+    if args.hybridrarl_pretrained_mode != "none" and not args.no_run:
+        paths = ([args.hybridrarl_pretrained_dir / "shared.pt"]
+                 if args.hybridrarl_pretrained_mode == "shared" else
+                 [args.hybridrarl_pretrained_dir / f"task_{task_id:02d}.pt"
+                  for task_id in task_ids])
+        missing = [path for path in paths if not path.is_file()]
+        if missing:
+            raise FileNotFoundError(f"Pretrained encoder checkpoints not found: {missing}")
+        if args.independent_hybridrarl:
+            output_dirs = [previous_unit_dir(Path(args.save_dir), task_id, args)
+                           for task_id in task_ids]
+            existing = [path for path in output_dirs if path.exists()]
+            if existing:
+                raise FileExistsError(f"Model directory already exists: {existing[0]}. "
+                                      "Choose a new --exp-name or --save-dir.")
     raise SystemExit(launch_all(args, task_ids))

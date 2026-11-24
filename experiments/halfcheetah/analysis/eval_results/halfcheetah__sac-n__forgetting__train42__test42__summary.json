@@ -1,0 +1,25 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 6989.185717101796,
+  "mean_return_across_tasks": 6989.1857171017955,
+  "model_name": "sac-n",
+  "num_tasks": 4,
+  "scenario": "forgetting",
+  "task_ids": [
+    4,
+    7,
+    1,
+    10
+  ],
+  "task_names": [
+    "hugefoot",
+    "moon",
+    "carry_stuff",
+    "rainfall"
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "var_return_across_episodes": 14865625.169820854,
+  "var_return_across_tasks": 14861842.683270454
+}

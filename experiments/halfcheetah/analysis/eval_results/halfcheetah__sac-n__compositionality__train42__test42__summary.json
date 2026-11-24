@@ -1,0 +1,25 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 4971.381896518406,
+  "mean_return_across_tasks": 4971.381896518407,
+  "model_name": "sac-n",
+  "num_tasks": 4,
+  "scenario": "compositionality",
+  "task_ids": [
+    8,
+    7,
+    2,
+    9
+  ],
+  "task_names": [
+    "tinyfoot",
+    "moon",
+    "carry_stuff_hugegravity",
+    "tinyfoot_moon"
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "var_return_across_episodes": 15713385.683070397,
+  "var_return_across_tasks": 15547096.197972894
+}

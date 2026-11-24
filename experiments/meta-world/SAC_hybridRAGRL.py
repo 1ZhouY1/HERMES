@@ -4,7 +4,7 @@ import numpy as np
 from tasks import get_task
 import gymnasium as gym
 from dataclasses import dataclass
-from typing import Literal, Optional, Tuple
+from typing import Dict, Literal, Optional, Tuple
 import pathlib
 import os
 import json
@@ -15,13 +15,13 @@ import random
 import time
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
-from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent, AdaptiveRARLAgent, HybridRARLAgent, ReservoirTrajectoryMemory
+from models import SingleNetAgent, shared, SimpleAgent, GRUMLPAgent, GRUNoContextAgent, StateGRUContextAgent, RecurrentSoftQNetwork, sample_gru_replay_batch, sample_state_gru_replay_batch, LongTermMemory, HybridSoftQNetwork, HybridRAGRLAgent, GRUStateEncoder, SummaryMemory, SummaryMemoryAgent, FrozenBackboneReplaceHeadAgent, FrozenSimpleResidualAdapterAgent, PairMemory, RewardReplacingPairMemory, RARLAgent, AdaptiveRARLAgent, HybridRARLAgent, ReservoirStateMemory, ReservoirTrajectoryMemory
 import torch.nn.functional as F
 
 
 @dataclass
 class Args:
-    model_type: Literal['simple', 'finetune', 'replace-head', 'residual-adapter', 'packnet', 'prognet', 'sdnet', 'grumlp', 'gnet', 'state-gru', 'state-gru-traj50', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', "rarl-500", "rarl-2000", "rarl-2000-adaptive", "rarl-5000", "rarl-10000", 'rarl-reward', 'rarl-reward-500', 'rarl-reward-ctx', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw', 'hybrid-raw-context', 'hybrid', 'gate', 'summary-memory']
+    model_type: Literal['simple', 'finetune', 'replace-head', 'residual-adapter', 'packnet', 'prognet', 'sdnet', 'grumlp', 'gnet', 'state-gru', 'state-gru-traj50', 'only-sdnet', 'ragnet', 'ragnet-wo-context', 'ragnet-wo-a', 'ragnet-concat-only', 'hybridrarl', 'hybridrarl-random-retrieval', 'hybridrarl-random-state-retrieval', 'hybridrarl-wo-gate', 'hybrid_add_norm', 'rarl', "rarl-500", "rarl-2000", "rarl-2000-adaptive", "rarl-2000-adaptive-attn", "rarl-5000", "rarl-10000", 'rarl-reward', 'rarl-reward-500', 'rarl-reward-ctx', 'hybrid-encoder', 'hybrid-context', 'hybrid-raw-encoder', 'hybrid-raw', 'hybrid-raw-context', 'hybrid', 'gate', 'summary-memory']
     """The name of the NN model to use for the agent"""
     save_dir: Optional[str] = None
     """If provided, the model will be saved in the given directory"""
@@ -178,6 +178,9 @@ class Args:
     adaptive_freeze_reused_prefix: bool = True
     """freeze copied policy prefix layers when a similar previous task is selected"""
 
+    adaptive_freeze_reused_attention: bool = True
+    """freeze copied memory attention head for rarl-2000-adaptive-attn"""
+
     # for HybridRARL
     hybridrarl_memory_capacity: int = 100
     """maximum number of fixed-length trajectories kept per task"""
@@ -188,8 +191,20 @@ class Args:
     hybridrarl_top_r: int = 5
     """coarse retrieval keeps the top-R trajectories"""
 
+    hybridrarl_state_memory_capacity: int = 2000
+    """maximum individual state/action pairs kept by random-state retrieval reservoir memory"""
+
     hybridrarl_hidden_dim: int = 128
     """hidden dimension of the trajectory RNN and critic state feature"""
+
+    hybridrarl_pretrained_mode: Literal["none", "shared", "per-task"] = "none"
+    """replace the HybridRARL trajectory GRU with a frozen pretrained encoder"""
+
+    hybridrarl_pretrained_dir: Optional[pathlib.Path] = None
+    """directory containing shared.pt and task_<id>.pt encoder checkpoints"""
+
+    hybridrarl_independent: bool = False
+    """train this HybridRARL task without previous-unit matching or state warmup"""
 
     hybridrarl_att_dim: int = 128
     """query/key attention dimension in fine retrieval"""
@@ -334,7 +349,15 @@ class Actor(nn.Module):
         return action, log_prob, mean
 
 @torch.no_grad()
-def eval_agent(agent, test_env, num_evals, global_step, writer, device):
+def eval_agent(
+    agent,
+    test_env,
+    num_evals,
+    global_step,
+    writer,
+    device,
+    retrieval_batch_fn=None,
+):
     obs, _ = test_env.reset()
     avg_ep_ret = 0
     avg_success = 0
@@ -378,7 +401,13 @@ def eval_agent(agent, test_env, num_evals, global_step, writer, device):
                     summary_sequence=summary_sequence,
                 )
             else:
-                _, _, action = agent.get_action(obs)
+                action_kwargs = {}
+                if (
+                    retrieval_batch_fn is not None
+                    and getattr(agent.model, "random_state_retrieval", False)
+                ):
+                    action_kwargs["memory_batch"] = retrieval_batch_fn()
+                _, _, action = agent.get_action(obs, **action_kwargs)
             action_np = action[0].cpu().numpy()
             obs, reward, termination, truncation, info = test_env.step(action_np)
 
@@ -439,6 +468,33 @@ def sample_ragnet_memory_batch(longterm_memory, n_traj, device):
     }
 
 
+def sample_state_memory_batch(
+    state_memory,
+    n_states: int,
+    device,
+) -> Dict[str, torch.Tensor]:
+    """Sample flat state/action pairs from the random-state reservoir memory."""
+    assert state_memory is not None, "ReservoirStateMemory is not initialized."
+    assert len(state_memory) > 0, "ReservoirStateMemory is empty."
+    if hasattr(state_memory, "sample_states"):
+        return state_memory.sample_states(n_states=n_states, device=device, replace=False)
+    if isinstance(state_memory, dict):
+        states = state_memory.get("states", state_memory.get("obs", None))
+        actions = state_memory.get("actions", None)
+        assert states is not None and actions is not None
+        states = states.to(device)
+        actions = actions.to(device)
+        n_states = min(int(n_states), states.shape[0])
+        indices = torch.randperm(states.shape[0], device=states.device)[:n_states]
+        sampled_states = states[indices]
+        return {
+            "states": sampled_states,
+            "obs": sampled_states,
+            "actions": actions[indices],
+        }
+    raise TypeError(f"Unsupported state memory type: {type(state_memory)!r}")
+
+
 def save_agent(model, dirname, save_memory=False):
     if isinstance(model, SummaryMemoryAgent):
         model.save(dirname=dirname, save_memory=True)
@@ -477,6 +533,7 @@ def save_sac_checkpoint(
     log_alpha=None,
     a_optimizer=None,
     save_memory=False,
+    state_memory=None,
 ):
     os.makedirs(dirname, exist_ok=True)
     save_agent(actor.model, dirname=dirname, save_memory=save_memory)
@@ -512,6 +569,8 @@ def save_sac_checkpoint(
         checkpoint["alpha_optimizer_state_dict"] = a_optimizer.state_dict()
 
     torch.save(checkpoint, os.path.join(dirname, "sac_checkpoint.pt"))
+    if state_memory is not None and hasattr(state_memory, "save"):
+        state_memory.save(dirname)
 
 
 def longterm_capacity_from_transition_budget(buffer_size, traj_len):
@@ -936,6 +995,31 @@ if __name__ == '__main__':
     # print(f'low: {low}') # [-1,-1,-1,-1]
 
     args = tyro.cli(Args)
+    encoder_checkpoint = None
+    if args.hybridrarl_pretrained_mode != "none":
+        if args.model_type != "hybridrarl":
+            raise ValueError("--hybridrarl-pretrained-mode requires --model-type hybridrarl")
+        encoder_dir = (args.hybridrarl_pretrained_dir or
+                       pathlib.Path(__file__).resolve().parents[1] / "analysis" /
+                       "simple_trajectory_encoder" / "meta-world")
+        filename = ("shared.pt" if args.hybridrarl_pretrained_mode == "shared" else
+                    f"task_{args.task_id:02d}.pt")
+        encoder_checkpoint = pathlib.Path(encoder_dir).expanduser() / filename
+        if not encoder_checkpoint.is_file():
+            raise FileNotFoundError(f"Pretrained encoder checkpoint not found: {encoder_checkpoint}")
+    if args.hybridrarl_independent:
+        if args.model_type != "hybridrarl":
+            raise ValueError("--hybridrarl-independent requires --model-type hybridrarl")
+        if args.prev_units:
+            raise ValueError("--hybridrarl-independent cannot be combined with --prev-units")
+    if args.model_type in {
+        "hybridrarl-random-retrieval",
+        "hybridrarl-random-state-retrieval",
+    } and len(args.prev_units) > 0:
+        raise ValueError(
+            f"{args.model_type} does not reuse previous modules; "
+            "do not pass --prev-units."
+        )
 
     ragnet_types = [
     "ragnet",
@@ -946,6 +1030,11 @@ if __name__ == '__main__':
 
     hybridrarl_types = [
         "hybridrarl",
+        "hybridrarl-random-retrieval",
+        "hybridrarl-random-state-retrieval",
+    ]
+    replay_state_retrieval_types = [
+        "hybridrarl-random-state-retrieval",
     ]
 
     hybrid_types = [
@@ -972,6 +1061,7 @@ if __name__ == '__main__':
         "rarl-500",
         "rarl-2000",
         "rarl-2000-adaptive",
+        "rarl-2000-adaptive-attn",
         "rarl-5000",
         "rarl-10000",
         "rarl-reward",
@@ -979,14 +1069,36 @@ if __name__ == '__main__':
         "rarl-reward-ctx",
     ]
 
-    memory_types = ragnet_types + hybrid_types + hybridrarl_types
+    memory_types = (
+        ragnet_types
+        + hybrid_types
+        + [
+            model_type
+            for model_type in hybridrarl_types
+            if model_type not in replay_state_retrieval_types
+        ]
+    )
     fusion_mode_by_model_type = {
         "gate": "mixture",
         "hybrid": "residual",
     }
 
-    run_name = f'task_{args.task_id}__{args.model_type}__{args.exp_name}__{args.seed}'
+    encoder_suffix = ("" if args.hybridrarl_pretrained_mode == "none" else
+                      f"_encoder_{args.hybridrarl_pretrained_mode.replace('-', '_')}")
+    if encoder_suffix and args.hybridrarl_independent:
+        encoder_suffix += "_independent"
+    run_name = f'task_{args.task_id}__{args.model_type}__{args.exp_name}{encoder_suffix}__{args.seed}'
+    model_output_dir = (pathlib.Path(args.save_dir) / run_name
+                        if args.save_dir is not None else None)
+    if encoder_checkpoint is not None and args.hybridrarl_independent:
+        if model_output_dir is None:
+            raise ValueError("Pretrained independent HybridRARL requires --save-dir")
+        if model_output_dir.exists():
+            raise FileExistsError(f"Model directory already exists: {model_output_dir}. "
+                                  "Choose a new --exp-name or --save-dir.")
     print(f'\n*** Run name: {run_name} ***\n')
+    if model_output_dir is not None:
+        print(f"*** Model directory: {model_output_dir.resolve()}")
     if args.track:
         import wandb
 
@@ -999,12 +1111,19 @@ if __name__ == '__main__':
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f'runs/{run_name}')
+    logs_root = (pathlib.Path(args.save_dir).parent if args.save_dir is not None
+                 else pathlib.Path(".")) / "runs"
+    writer = SummaryWriter(str(logs_root / run_name), flush_secs=10)
+    print(f"*** TensorBoard directory: {(logs_root / run_name).resolve()}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s"
         % ("\n".join([f'|{key}|{value}|' for key, value in vars(args).items()])),
     )
+    if encoder_checkpoint is not None:
+        writer.add_text("encoder/checkpoint", str(encoder_checkpoint.resolve()), 0)
+        writer.add_scalar("encoder/frozen", 1, 0)
+    writer.flush()
 
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -1022,9 +1141,10 @@ if __name__ == '__main__':
     hybridrarl_current_states = None
     hybridrarl_reuse_source = None
     hybridrarl_distance_info = []
-    if args.model_type == "rarl-2000-adaptive":
+    adaptive_rarl_types = ["rarl-2000-adaptive", "rarl-2000-adaptive-attn"]
+    if args.model_type in adaptive_rarl_types:
         if args.save_dir is None:
-            raise ValueError("rarl-2000-adaptive requires --save-dir so sampled states can be saved.")
+            raise ValueError(f"{args.model_type} requires --save-dir so sampled states can be saved.")
 
         adaptive_agent_dir = pathlib.Path(args.save_dir) / run_name
         adaptive_current_states, adaptive_current_meta, adaptive_state_path = ensure_state_sequence(
@@ -1074,7 +1194,7 @@ if __name__ == '__main__':
                 f"task {adaptive_reuse_source['task_id']} "
                 f"(distance={adaptive_reuse_source['distance']:.6f})."
             )
-    elif args.model_type == "hybridrarl":
+    elif args.model_type == "hybridrarl" and not args.hybridrarl_independent:
         if args.save_dir is None:
             raise ValueError("hybridrarl requires --save-dir so sampled states and reuse metadata can be saved.")
 
@@ -1122,10 +1242,14 @@ if __name__ == '__main__':
             print("*** HybridRARL: no previous task below threshold; all modules are newly initialized.")
         else:
             print(
-                "*** HybridRARL: reusing trajectory RNN and policy prefix from "
+                "*** HybridRARL: reusing policy prefix from "
                 f"task {hybridrarl_reuse_source['task_id']} "
                 f"(distance={hybridrarl_reuse_source['distance']:.6f})."
             )
+    elif args.model_type == "hybridrarl":
+        if args.save_dir is None:
+            raise ValueError("hybridrarl requires --save-dir")
+        print("*** HybridRARL: independent task training; previous-unit matching skipped.")
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.task_id)])
@@ -1139,6 +1263,15 @@ if __name__ == '__main__':
     obs_dim = int(np.prod(envs.single_observation_space.shape))
     act_dim = int(np.prod(envs.single_action_space.shape))
     print(f'*** Loading model `{args.model_type}` ***')
+    if args.model_type == "hybridrarl-random-retrieval":
+        print("*** HybridRARL random retrieval: coarse top-R trajectories are sampled randomly; prev-units are disabled.")
+    if args.model_type == "hybridrarl-random-state-retrieval":
+        print(
+            "*** HybridRARL random-state retrieval: randomly sample "
+            f"{args.hybridrarl_top_r} states/actions from a reservoir state "
+            "memory and feed the states directly to attention; trajectory "
+            "memory, trajectory GRU summarizer, and prev-units are disabled."
+        )
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
@@ -1231,20 +1364,33 @@ if __name__ == '__main__':
         ).to(device)
 
     elif args.model_type in hybridrarl_types:
-        print(
-            f"*** HybridRARL ReservoirTrajectoryMemory capacity: "
-            f"{args.hybridrarl_memory_capacity} trajectories "
-            f"({args.hybridrarl_memory_capacity * args.hybridrarl_traj_len} transitions)"
-        )
+        if args.model_type in replay_state_retrieval_types:
+            print(
+                "*** HybridRARL random-state retrieval memory capacity: "
+                f"{args.hybridrarl_state_memory_capacity} state/action pairs "
+                "(reservoir sampling)."
+            )
+            longterm_memory = ReservoirStateMemory(
+                capacity=args.hybridrarl_state_memory_capacity,
+                obs_dim=obs_dim,
+                action_dim=act_dim,
+                device="cpu",
+            )
+        else:
+            print(
+                f"*** HybridRARL ReservoirTrajectoryMemory capacity: "
+                f"{args.hybridrarl_memory_capacity} trajectories "
+                f"({args.hybridrarl_memory_capacity * args.hybridrarl_traj_len} transitions)"
+            )
 
-        longterm_memory = ReservoirTrajectoryMemory(
-            capacity=args.hybridrarl_memory_capacity,
-            traj_len=args.hybridrarl_traj_len,
-            obs_dim=obs_dim,
-            action_dim=act_dim,
-            reward_dim=1,
-            device="cpu",
-        )
+            longterm_memory = ReservoirTrajectoryMemory(
+                capacity=args.hybridrarl_memory_capacity,
+                traj_len=args.hybridrarl_traj_len,
+                obs_dim=obs_dim,
+                action_dim=act_dim,
+                reward_dim=1,
+                device="cpu",
+            )
 
         model = HybridRARLAgent(
             obs_dim=obs_dim,
@@ -1259,6 +1405,8 @@ if __name__ == '__main__':
             policy_hidden_dim=args.hybridrarl_policy_hidden_dim,
             policy_layers=args.hybridrarl_policy_layers,
             coarse_metric=args.hybridrarl_coarse_metric,
+            random_coarse_retrieval=args.model_type == "hybridrarl-random-retrieval",
+            random_state_retrieval=args.model_type == "hybridrarl-random-state-retrieval",
         ).to(device)
 
         if hybridrarl_reuse_source is not None:
@@ -1271,6 +1419,13 @@ if __name__ == '__main__':
                 freeze=args.hybridrarl_freeze_reused_modules,
             )
             model.reused_source = hybridrarl_reuse_source["model_dir"]
+        if encoder_checkpoint is not None:
+            model.load_pretrained_encoder(
+                encoder_checkpoint, domain="meta-world", task_id=args.task_id,
+                mode=args.hybridrarl_pretrained_mode,
+            )
+            print(f"*** HybridRARL: frozen {args.hybridrarl_pretrained_mode} encoder "
+                  f"from {encoder_checkpoint.resolve()}")
 
     elif args.model_type in hybrid_types + raw_types:
         longterm_capacity = longterm_capacity_from_transition_budget(
@@ -1379,6 +1534,14 @@ if __name__ == '__main__':
                     action_dim=act_dim,
                     device="cpu",
                 )
+            elif args.model_type in ["rarl-2000-adaptive-attn"]:
+                print(f"*** PairMemory capacity: 2000 state-action pairs on {device}")
+                longterm_memory = PairMemory(
+                    capacity=2000,
+                    obs_dim=obs_dim,
+                    action_dim=act_dim,
+                    device=device,
+                )
             elif args.model_type in ["rarl-5000"]:
                 print(
                 f"*** PairMemory capacity: {args.rarl_memory_size} state-action pairs"
@@ -1410,7 +1573,7 @@ if __name__ == '__main__':
                     device="cpu",
                 )
 
-        if args.model_type == "rarl-2000-adaptive":
+        if args.model_type in adaptive_rarl_types:
             prev_unit_models = [
                 load_policy_unit(pathlib.Path(path), map_location=device)
                 for path in args.prev_units
@@ -1434,6 +1597,11 @@ if __name__ == '__main__':
                     source_model,
                     freeze=args.adaptive_freeze_reused_prefix,
                 )
+                if args.model_type == "rarl-2000-adaptive-attn":
+                    model.copy_attention_heads_from(
+                        source_model,
+                        freeze=args.adaptive_freeze_reused_attention,
+                    )
                 model.reused_policy_source = adaptive_reuse_source["model_dir"]
         else:
             model = RARLAgent(
@@ -1522,7 +1690,23 @@ if __name__ == '__main__':
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(unique_parameters(qf1, qf2), lr=args.q_lr)
-    actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
+    actor_optimizer = optim.Adam(
+        [parameter for parameter in actor.parameters() if parameter.requires_grad],
+        lr=args.policy_lr,
+    )
+    if encoder_checkpoint is not None and args.hybridrarl_independent:
+        model_output_dir.mkdir(parents=True, exist_ok=False)
+        (model_output_dir / "run_config.json").write_text(
+            json.dumps({
+                "task_id": int(args.task_id),
+                "model_type": args.model_type,
+                "seed": int(args.seed),
+                "encoder_mode": args.hybridrarl_pretrained_mode,
+                "encoder_checkpoint": str(encoder_checkpoint.resolve()),
+                "tensorboard_dir": str((logs_root / run_name).resolve()),
+            }, indent=2) + "\n",
+            encoding="utf-8",
+        )
 
     # Automatic entropy tuning
     if args.autotune:
@@ -1554,7 +1738,20 @@ if __name__ == '__main__':
         else:
             obs_tensor = torch.Tensor(obs).to(device)
 
-            if args.model_type in hybridrarl_types + hybrid_types + raw_types:
+            if args.model_type in replay_state_retrieval_types:
+                memory_batch = sample_state_memory_batch(
+                    state_memory=longterm_memory,
+                    n_states=args.hybridrarl_top_r,
+                    device=device,
+                )
+
+                with torch.no_grad():
+                    actions, _, _ = actor.get_action(
+                        obs_tensor,
+                        memory_batch=memory_batch,
+                    )
+
+            elif args.model_type in hybridrarl_types + hybrid_types + raw_types:
                 assert len(longterm_memory) > 0, (
                     "Hybrid RAGRL starts acting after random_actions_end, but LongTermMemory is empty. "
                     "Increase random_actions_end or decrease the trajectory length."
@@ -1689,6 +1886,18 @@ if __name__ == '__main__':
             state_gru_cache[:] = state_gru_cache[-max(state_gru_sequence_len(args) - 1, 0) :]
             if bool(np.logical_or(terminations, truncations)[0]):
                 state_gru_cache.clear()
+
+        if args.model_type in replay_state_retrieval_types:
+            state_to_memory = np.asarray(obs[0], dtype=np.float32).reshape(-1)
+            action_to_memory = np.asarray(actions[0], dtype=np.float32).reshape(-1)
+            assert state_to_memory.shape == (obs_dim,), \
+                f"state_to_memory should be {(obs_dim,)}, got {state_to_memory.shape}"
+            assert action_to_memory.shape == (act_dim,), \
+                f"action_to_memory should be {(act_dim,)}, got {action_to_memory.shape}"
+            longterm_memory.add_pair(
+                state=state_to_memory,
+                action=action_to_memory,
+            )
 
         if args.model_type in memory_types + raw_types:
             if args.model_type in hybridrarl_types:
@@ -1867,7 +2076,15 @@ if __name__ == '__main__':
                 data = rb.sample(args.batch_size)
             ragnet_kwargs = {}
 
-            if args.model_type in hybridrarl_types + hybrid_types + raw_types:
+            if args.model_type in replay_state_retrieval_types:
+                memory_batch = sample_state_memory_batch(
+                    state_memory=longterm_memory,
+                    n_states=args.hybridrarl_top_r,
+                    device=device,
+                )
+                ragnet_kwargs["memory_batch"] = memory_batch
+
+            elif args.model_type in hybridrarl_types + hybrid_types + raw_types:
                 retrieve_n_traj = (
                     args.hybridrarl_memory_capacity
                     if args.model_type in hybridrarl_types
@@ -2094,11 +2311,18 @@ if __name__ == '__main__':
                             torch.sigmoid(actor.model.net_mean.retrieval_gate).item(),
                             global_step,
                         )
-                    writer.add_scalar(
-                        "charts/longterm_memory_size",
-                        len(longterm_memory),
-                        global_step,
-                    )
+                    if args.model_type in replay_state_retrieval_types:
+                        writer.add_scalar(
+                            "charts/state_memory_size",
+                            len(longterm_memory),
+                            global_step,
+                        )
+                    else:
+                        writer.add_scalar(
+                            "charts/longterm_memory_size",
+                            len(longterm_memory),
+                            global_step,
+                        )
                 if args.model_type in summary_memory_types:
                     writer.add_scalar(
                         "charts/summary_memory_size",
@@ -2135,10 +2359,31 @@ if __name__ == '__main__':
                 log_alpha=log_alpha if args.autotune else None,
                 a_optimizer=a_optimizer if args.autotune else None,
                 save_memory=args.save_memory,
+                state_memory=(
+                    longterm_memory
+                    if args.model_type in replay_state_retrieval_types
+                    else None
+                ),
             )
 
     [
-        eval_agent(actor, envs.envs[i], args.num_evals, global_step, writer, device)
+        eval_agent(
+            actor,
+            envs.envs[i],
+            args.num_evals,
+            global_step,
+            writer,
+            device,
+            retrieval_batch_fn=(
+                lambda: sample_state_memory_batch(
+                    state_memory=longterm_memory,
+                    n_states=args.hybridrarl_top_r,
+                    device=device,
+                )
+                if args.model_type in replay_state_retrieval_types
+                else None
+            ),
+        )
         for i in range(envs.num_envs)
     ]
 
@@ -2162,4 +2407,9 @@ if __name__ == '__main__':
             log_alpha=log_alpha if args.autotune else None,
             a_optimizer=a_optimizer if args.autotune else None,
             save_memory=args.save_memory,
+            state_memory=(
+                longterm_memory
+                if args.model_type in replay_state_retrieval_types
+                else None
+            ),
         )

@@ -1,0 +1,8 @@
+{
+  "source_model_task_id": 9,
+  "num_eval_tasks": 10,
+  "average_success": 0.1,
+  "average_return": 215.99503793402533,
+  "csv": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/analysis/componet_final_eval/task_9__componet_on_task0_9__train42__test0.csv",
+  "details_json": "/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/meta-world/analysis/componet_final_eval/task_9__componet_on_task0_9__train42__test0.details.json"
+}

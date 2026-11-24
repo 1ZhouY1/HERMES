@@ -1,0 +1,25 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 5142.74195962967,
+  "mean_return_across_tasks": 5142.74195962967,
+  "model_name": "sac-n",
+  "num_tasks": 4,
+  "scenario": "transfer",
+  "task_ids": [
+    2,
+    7,
+    3,
+    5
+  ],
+  "task_names": [
+    "carry_stuff_hugegravity",
+    "moon",
+    "defective_module",
+    "hugefoot_rainfall"
+  ],
+  "test_seed": 42,
+  "train_seed": 42,
+  "var_return_across_episodes": 25000006.03892459,
+  "var_return_across_tasks": 24988651.02051446
+}

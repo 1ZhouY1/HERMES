@@ -1,0 +1,3 @@
+task_id,task_name,source_task_id,source_task_name,model_dir,episodes,train_seed,test_seed,mean_return,std_return,mean_length
+0,normal,0,normal,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/task_0__simple__run_sac__42,10,42,42,10878.066844893889,1987.849985531175,1000.0
+6,inverted_actions,6,inverted_actions,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/robustness/task_6__componet__SAC__42,10,42,42,12203.017918742948,148.38619335827096,1000.0

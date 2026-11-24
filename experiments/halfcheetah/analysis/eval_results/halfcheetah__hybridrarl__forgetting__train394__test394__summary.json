@@ -1,0 +1,25 @@
+{
+  "benchmark": "halfcheetah",
+  "episodes_per_task": 10,
+  "mean_return_across_episodes": 6808.277252952279,
+  "mean_return_across_tasks": 6808.277252952278,
+  "model_name": "hybridrarl",
+  "num_tasks": 4,
+  "scenario": "forgetting",
+  "task_ids": [
+    4,
+    7,
+    1,
+    10
+  ],
+  "task_names": [
+    "hugefoot",
+    "moon",
+    "carry_stuff",
+    "rainfall"
+  ],
+  "test_seed": 394,
+  "train_seed": 394,
+  "var_return_across_episodes": 20328297.777708188,
+  "var_return_across_tasks": 20235745.402704418
+}

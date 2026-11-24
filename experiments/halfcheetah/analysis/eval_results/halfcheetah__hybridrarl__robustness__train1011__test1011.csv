@@ -1,0 +1,3 @@
+task_id,task_name,source_task_id,source_task_name,model_dir,episodes,train_seed,test_seed,mean_return,std_return,mean_length
+0,normal,0,normal,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_0__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,11931.086217268361,92.19100381887611,1000.0
+6,inverted_actions,6,inverted_actions,/home/dockeruser_df0377e7/workspace/Single-DistillNet/experiments/halfcheetah/agents/hybridrarl_prev_units/robustness/task_6__hybridrarl__SAC_hybridrarl_prev_units__1011,10,1011,1011,9759.671863808522,152.50601040686308,1000.0
